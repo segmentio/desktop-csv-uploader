@@ -1,19 +1,25 @@
-import React from 'react';
-import {Pane, Menu, MajorScale} from 'evergreen-ui';
+import React, {useEffect, useState} from 'react';
+import {Pane, Menu} from 'evergreen-ui';
 
 function App() {
-  const [currentCSV, setCurrentCSV] = React.useState(null)
+  const [csvData, setCSVData] = useState(null)
 
+  useEffect( () => {
+//     window.api.send(csvData)
+    window.api.on("csv-data-imported", (data) => {
+      window.console.log("csv-data-imported");
+      window.console.log(data)
+    })
+  }
+)
   return (
     <div className="App">
-      <header className="App-header">
-      <Pane
-      display="grid"
-      gridTemplateColumns= "1fr 3fr 3fr">
-        <CustomMenu/>
-        <CSVSpace/>
-      </Pane>
-      </header>
+        <Pane
+        display="grid"
+        gridTemplateColumns= "1fr 3fr 3fr">
+          <CustomMenu/>
+          <CSVGrid currentCSV={csvData}/>
+        </Pane>
     </div>
   );
 }
@@ -31,12 +37,9 @@ class CustomMenu extends React.Component {
             onSelect={() => {
               console.log("import-csv")
               window.api.send("import-csv")
-              }}>
+              }}
+            >
             Import CSV
-          {window.api.on("response", (data) => {
-    console.log(`Received ${data} from main process`);
-})}
-
             </Menu.Item>
           </Pane>
 
@@ -56,10 +59,13 @@ class CustomMenu extends React.Component {
   }
 }
 
-const CSVSpace = () => {
-  return(
-    <Pane>
-    CSVDISPLAY
-    </Pane>
-  )
+function CSVGrid (props){
+  const csvHeader = []
+  const csvRows = []
+
+  if (!props) {
+    return( <Pane> hey import some stuff </Pane>)
+  }else {
+    return(<Pane>{props.data}</Pane>)
+  }
 }

@@ -15,7 +15,7 @@ contextBridge.exposeInMainWorld(
             }
         },
         on: (channel, func) => {
-            let validChannels = ["response"];
+            let validChannels = ["csv-data-imported"];
             if (validChannels.includes(channel)) {
                 // Deliberately strip event as it includes `sender`
                 ipcRenderer.on(channel, (event, ...args) => func(...args));

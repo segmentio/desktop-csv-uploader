@@ -54,27 +54,15 @@ ipcMain.on('import-csv', (event, args) => {
     properties: ['openFile']
   }).then((selection) => {
     if (!selection.canceled) {
-
-      console.log(selection.filePaths[0])
-
-      // read csv and print it out
-      var results = []
+      var csvResults = []
       fs.createReadStream(selection.filePaths[0])
-        .pipe(csv())
-        .on('data', (data) => results.push(data))
+        .pipe(csv({separator:'|'}))
+        .on('data', (data) => csvResults.push(data))
         .on('end', () => {
-          console.log(results); //send via ipc
+          event.sender.send('csv-data-imported', csvResults)
         })
-        .on('error', function(err){
-          console.log(err)
-        })
-
-      // doesnt work
-      event.reply('csv-data', 'data')
-
-    } else {
-      console.log('no file selected');
-    }
+        .on('error', (err) => console.log(err))
+    } else { console.log('no file selected')}
   })
   .catch(error => console.log(error))
 })
