@@ -20,6 +20,12 @@ contextBridge.exposeInMainWorld(
                 // Deliberately strip event as it includes `sender`
                 ipcRenderer.on(channel, (event, ...args) => func(...args));
             }
+        },
+        removeAllListeners: (channel, func) => {
+          let validChannels = ["csv-data-imported"];
+          if (validChannels.includes(channel)) {
+            ipcRenderer.removeAllListeners(channel)
+          }
         }
     }
 );
