@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const csv = require('csv-parser')
 
-function createWindow () {
+function createUIWindow () {
   // Create the browser window.
   const win = new BrowserWindow({
     width: 800,
@@ -23,10 +23,23 @@ function createWindow () {
   win.webContents.openDevTools()
 }
 
+// Hidden-window Render Process that handles supplying data to the UI process,
+// and importing to the Segment workspace
+function createImporterWindow(){
+  const win = new BrowserWindow({
+    show:false,
+    nodeIntegration: true
+  })
+
+  win.loadFile('public/importer_window.html')
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(createWindow)
+app.whenReady()
+.then(createUIWindow)
+.then(createImporterWindow)
 
 //OS SPECIFIC METHODS
 
@@ -44,7 +57,8 @@ app.on('activate', () => {
   // dock icon is clicked and there are no other windows open.
 
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    createUIWindow()
+    createImporterWindow()
   }
 })
 
@@ -65,4 +79,9 @@ ipcMain.on('import-csv', (event, args) => {
     } else { console.log('no file selected')}
   })
   .catch(error => console.log(error))
+})
+
+
+ipcMain.on('test', () => {
+  console.log('test')
 })
