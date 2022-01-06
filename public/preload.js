@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld(
     "api", {
         send: (channel, data) => {
             // whitelist channels
-            let validChannels = ["load", "import-to-segment"];
+            let validChannels = ["load-csv", "import-to-segment"];
             if (validChannels.includes(channel)) {
                 ipcRenderer.send(channel, data);
             }
