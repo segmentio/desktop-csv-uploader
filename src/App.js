@@ -57,8 +57,8 @@ class CustomMenu extends React.Component {
           <Pane>
             <Menu.Item
             onSelect={() => {
-              console.log("import-csv")
-              window.api.send("import-csv")
+              console.log("load-csv")
+              window.api.send("load-csv")
               }}>
             Import CSV
             </Menu.Item>

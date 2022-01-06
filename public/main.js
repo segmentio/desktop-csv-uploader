@@ -63,7 +63,7 @@ app.on('activate', () => {
 })
 
 // IPC API
-ipcMain.on('import-csv', (event, args) => {
+ipcMain.on('load-csv', (event, args) => {
   dialog.showOpenDialog({
     properties: ['openFile']
   }).then((selection) => {
@@ -82,6 +82,6 @@ ipcMain.on('import-csv', (event, args) => {
 })
 
 
-ipcMain.on('test', () => {
+ipcMain.on('import-to-segment', () => {
   console.log('test')
 })
