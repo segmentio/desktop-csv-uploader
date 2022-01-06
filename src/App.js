@@ -13,6 +13,7 @@ import {
   SideSheet,
   Position,
   TextInputField,
+  Switch,
   majorScale
 } from 'evergreen-ui';
 
@@ -22,27 +23,6 @@ function App() {
   const [csvData, setCSVData] = useState(null)
   const [eventSelection, setEventSelection] = useState(null)
   const [eventIsSelected, setEventIsSelected] = useState(false)
-  const [userIDField, setUserIDField] = useState(null)
-  const [anonymousIDField, setAnonymousIDField] = useState(null)
-  const [timestampField, setTimestampField] = useState(null)
-  const [eventNameField, setEventNameField] = useState(null)
-  const [writeKey, setWriteKey] = useState(null)
-  const [eventType, setEventType] = useState(null)
-
-  const importToSegment = () => {
-    const data = {
-      'csvData':csvData,
-      'userIDField': userIDField,
-      'anonymousIDField': anonymousIDField,
-      'timestampField': timestampField,
-      'EventNameField': eventNameField,
-      //need to implement
-      'writeKey': writeKey,
-      'eventType': eventType
-    }
-    console.log(data)
-    window.api.send('import-to-segment', data)
-  }
 
   useEffect( () => {
     window.api.on("csv-data-imported", (data) => {setCSVData(data)})
@@ -51,7 +31,6 @@ function App() {
 )
   return (
     <div className="App">
-    <h1>{userIDField} test</h1>
         <Pane
         display="grid"
         gridTemplateColumns= "1fr 5fr">
@@ -62,12 +41,6 @@ function App() {
           setEventSelection={setEventSelection}
           eventIsSelected={eventIsSelected}
           setEventIsSelected={setEventIsSelected}
-          setUserIDField={setUserIDField}
-          setAnonymousIDField={setAnonymousIDField}
-          setTimestampField={setTimestampField}
-          setWriteKey={setWriteKey}
-          setEventType={setEventType}
-          importToSegment={importToSegment}
           />
         </Pane>
     </div>
@@ -127,12 +100,8 @@ function CSVWorkspace(props){
         <Pane
         marginX={majorScale(4)}>
           <Configuration
-          importToSegment={props.importToSegment}
           columnNames={Object.keys(props.csvData[0])}
-          setUserIDField={props.setUserIDField}
-          setAnonymousIDField={props.setAnonymousIDField}
-          setTimestampField={props.setTimestampField}
-          setWriteKey={props.writeKey}
+          csvData={props.csvData}
           />
         </Pane>
       </Pane>
@@ -249,24 +218,68 @@ function EventPreview(props) {
 
 function Configuration(props) {
 
+  const [userIDField, setUserIDField] = useState(null)
+  const [anonymousIDField, setAnonymousIDField] = useState(null)
+  const [timestampField, setTimestampField] = useState(null)
+  const [eventNameField, setEventNameField] = useState(null)
+  const [writeKey, setWriteKey] = useState(null)
+  const [trackData, setTrackData] = useState(false)
+  const [identifyData, setIdentifyData] = useState(false)
+
+
+  const importToSegment = () => {
+    const data = {
+      'csvData':props.csvData,
+      'userIDField': userIDField,
+      'anonymousIDField': anonymousIDField,
+      'timestampField': timestampField,
+      'EventNameField': eventNameField,
+      //need to implement
+      'writeKey': writeKey,
+      'trackData': trackData,
+      'identifyData': identifyData
+    }
+    console.log(data)
+    window.api.send('import-to-segment', data)
+  }
+
   return(
     <Pane borderLeft={majorScale(50)}>
-      <Heading>
-        Configuration
-      </Heading>
-      <WriteKeyForm label='Segment Write Key' onChange={props.setWriteKey}/>
-      <SettingSelector options={props.columnNames} label="UserID Field" onChange={props.setUserIDField}/>
-      <SettingSelector options={props.columnNames} label="AnonymousID Field" onChange={props.setAnonymousIDField}/>
-      <SettingSelector options={props.columnNames} label="Timestamp Field" onChange={props.setTimestampField}/>
-      <SettingSelector options={props.columnNames} label="Event Field" onChange={props.setEventNameField}/>
-      <Transformation/>
+      <Heading> Configuration </Heading>
+      <WriteKeyForm label='Segment Write Key' onChange={setWriteKey}/>
+      <Pane marginBottom={majorScale(4)}>
+        <Heading> Event Types </Heading>
+        <EventTypeSwitch label='Track' onChange={setTrackData}/>
+        <EventTypeSwitch label='Identify' onChange={setIdentifyData}/>
+      </Pane>
+      <SettingSelector options={props.columnNames} label="UserID Field" onChange={setUserIDField} />
+      <SettingSelector options={props.columnNames} label="AnonymousID Field" onChange={setAnonymousIDField} />
+      <SettingSelector options={props.columnNames} label="Timestamp Field" onChange={setTimestampField} />
+      <SettingSelector options={props.columnNames} label="Event Field" onChange={setEventNameField} />
+      <Transformation />
       <Button
       appearance="primary"
-      onClick={
-        () => props.importToSegment()
-      }>
+      onClick={() => importToSegment()}>
         Import
       </Button>
+    </Pane>
+  )
+}
+
+function EventTypeSwitch(props) {
+  const [checked, setChecked] = React.useState(false)
+  return (
+    <Pane margin={majorScale(2)}>
+      <Text size={400} color={'default'}>
+        {props.label}
+      </Text>
+      <Switch
+      checked={checked}
+      onChange={
+        (e) => {
+          setChecked(e.target.checked)
+          props.onChange(e.target.checked)
+        }}/>
     </Pane>
   )
 }
