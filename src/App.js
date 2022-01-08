@@ -223,24 +223,25 @@ function Configuration(props) {
   const [timestampField, setTimestampField] = useState(null)
   const [eventNameField, setEventNameField] = useState(null)
   const [writeKey, setWriteKey] = useState(null)
-  const [trackData, setTrackData] = useState(false)
-  const [identifyData, setIdentifyData] = useState(false)
+  const [hasTrack, setHasTrack] = useState(false)
+  const [hasIdentify, setHasIdentify] = useState(false)
 
 
   const importToSegment = () => {
     const data = {
-      'csvData':props.csvData,
-      'userIDField': userIDField,
-      'anonymousIDField': anonymousIDField,
-      'timestampField': timestampField,
-      'EventNameField': eventNameField,
-      //need to implement
-      'writeKey': writeKey,
-      'trackData': trackData,
-      'identifyData': identifyData
+      csvData:props.csvData,
+      userIdField: userIDField,
+      anonymousIdField: anonymousIDField,
+      timestampField: timestampField,
+      eventField: eventNameField,
+      writeKey: writeKey,
+      eventTypes: {
+        track: hasTrack,
+        identify:hasIdentify
+      },
     }
-    console.log(data)
     window.api.send('import-to-segment', data)
+    console.log('import-to-segment')
   }
 
   return(
@@ -249,8 +250,8 @@ function Configuration(props) {
       <WriteKeyForm label='Segment Write Key' onChange={setWriteKey}/>
       <Pane marginBottom={majorScale(4)}>
         <Heading> Event Types </Heading>
-        <EventTypeSwitch label='Track' onChange={setTrackData}/>
-        <EventTypeSwitch label='Identify' onChange={setIdentifyData}/>
+        <EventTypeSwitch label='Track' onChange={setHasTrack}/>
+        <EventTypeSwitch label='Identify' onChange={setHasIdentify}/>
       </Pane>
       <SettingSelector options={props.columnNames} label="UserID Field" onChange={setUserIDField} />
       <SettingSelector options={props.columnNames} label="AnonymousID Field" onChange={setAnonymousIDField} />
