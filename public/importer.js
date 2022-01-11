@@ -12,6 +12,9 @@ ipcRenderer.on('import-to-segment', (event, data) =>{
 console.log('importing-to-segment')
   let analytics = new Analytics(data.writeKey)
   const {eventField, anonymousIdField, userIdField, timestampField, ...rest } = data
+  // propFields = distillPropFields({eventField, anonymousIdField, userIdField, timestampField}, data.csvData[0])
+
+
 
   for (let i=0; i<data.csvData.length; i++) {
     console.log(data.csvData[i])
@@ -20,7 +23,10 @@ console.log('importing-to-segment')
         event:data.csvData[i][eventField],
         anonymousId:data.csvData[i][anonymousIdField],
         userId:data.csvData[i][userIdField],
-        timestamp: data.csvData[i][timestampField]
+        timestamp: new Date(data.csvData[i][timestampField]),
+        // properites: {
+        //   propertyfields: propFields.map()...
+        // }
       })
     }
 
@@ -40,6 +46,21 @@ console.log('importing-to-segment')
 
   }
 })
-
+// TODO
 // save settings
 // retrieve settings
+
+// function distillPropFields(fieldsToIgnore, anyEvent){
+//   //super slow since each field gets deleted
+//   // TODO explore how we can ignore the irrelevant fields better
+//
+//   const fieldsArray = Object.keys(anyEvent)
+//   let propertiesFields = []
+//     for (const field of fieldsArray){
+//       if (fieldsToIgnore[field]) {
+//       } else {
+//         fieldsArray.append
+//       }
+//     }
+//   return
+// }
