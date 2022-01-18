@@ -14,6 +14,7 @@ import {
   Position,
   TextInputField,
   Switch,
+  FilePicker,
   majorScale
 } from 'evergreen-ui';
 
@@ -25,8 +26,8 @@ function App() {
   const [eventIsSelected, setEventIsSelected] = useState(false)
 
   useEffect( () => {
-    window.api.on("csv-data-imported", (data) => {setCSVData(data)})
-    return () => window.api.removeAllListeners("csv-data-imported");
+    window.api.on("csv-loaded", (data) => {setCSVData(data)})
+    return () => window.api.removeAllListeners("csv-loaded");
   }
 )
   return (
@@ -42,6 +43,7 @@ function App() {
           eventIsSelected={eventIsSelected}
           setEventIsSelected={setEventIsSelected}
           />
+          {console.log(csvData)}
         </Pane>
     </div>
   );
@@ -55,12 +57,8 @@ class CustomMenu extends React.Component {
       <Menu>
         <Menu.Group>
           <Pane>
-            <Menu.Item
-            onSelect={() => {
-              console.log("load-csv")
-              window.api.send("load-csv")
-              }}>
-            Import CSV
+            <Menu.Item>
+            Importer
             </Menu.Item>
           </Pane>
           <Pane>
@@ -83,9 +81,10 @@ function CSVWorkspace(props){
     return(
       <Pane
       display="grid"
-      gridTemplateColumns= "1fr 1fr"
+      gridTemplateColumns="1fr 1fr"
       marginY={majorScale(4)}>
         <Pane>
+        <Heading>Historical Events</Heading>
           <CSVTable
           csvData={props.csvData}
           setEventSelection={props.setEventSelection}
@@ -109,14 +108,21 @@ function CSVWorkspace(props){
   } else {
     return (
       <Pane
-      text-align='center'>
+      text-align='center'
+      margin={majorScale(10)}>
         <Text
         color="muted"
         size="500px"
-        margin="auto"
         dispaly='inline-block'>
         Import CSV, or work from Your Import History
         </Text>
+        <FilePicker
+        onChange={filePath => {
+          console.log("load-csv", filePath)
+          window.api.send("load-csv", filePath[0].path)
+          }}
+        />
+
       </Pane>
     )
   }

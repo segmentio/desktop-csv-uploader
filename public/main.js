@@ -1,7 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 const path = require('path');
-const fs = require('fs');
-const csv = require('csv-parser')
 
 let uiWindow, importerWindow
 
@@ -50,30 +48,25 @@ function createImporterWindow() {
 }
 
 function registerIPC() {
-  // IPC Main event APIs
 
-  // load-csv receives from uiWindow, opens the file via electron's builtins, parses
-  // and returns the csv data to uiwindow in json format.
-  ipcMain.on('load-csv', (event, args) => {
-    dialog.showOpenDialog({
-      properties: ['openFile']
-    }).then((selection) => {
-      if (!selection.canceled) {
-        var csvResults = []
-        fs.createReadStream(selection.filePaths[0])
-          .pipe(csv({separator:'|'}))
-          .on('data', (data) => csvResults.push(data))
-          .on('end', () => {
-            event.sender.send('csv-data-imported', csvResults)
-          })
-          .on('error', (err) => console.log(err))
-      } else { console.log('no file selected')}
-    })
-    .catch(error => console.log(error))
+  // uiWindow --> main process --> importerWindow
+    // A filepath is passed to the importer window which parses and loads the
+    // the csv file into memory
+  ipcMain.on('load-csv', (event, filePath) => {
+    importerWindow.webContents.send('load-csv', filePath)
+    console.log('main-load-csv')
+  })
+
+  // importerWindow --> main process --> uiWindow
+    // The head of the csv file is passed to the UI
+  ipcMain.on('csv-loaded', (event, data) => {
+    uiWindow.webContents.send('csv-loaded', data)
+    console.log('main-csv-loaded')
   })
 
 
   // uiwindow --> main process --> importerWindow
+    // settings and csv data are passed to the importer
   ipcMain.on('import-to-segment', (event, data) => {
     importerWindow.webContents.send('import-to-segment', data);
     console.log('main-import-to-segment')

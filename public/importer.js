@@ -1,5 +1,7 @@
 const electron = require('electron');
-const Analytics = require('analytics-node')
+const fs = require('fs');
+const csv = require('csv-parser')
+const Analytics = require('analytics-node');
 const ipcRenderer = electron.ipcRenderer;
 
 
@@ -9,7 +11,6 @@ const ipcRenderer = electron.ipcRenderer;
 //ipc render and ipc main events including preload for 'import-to-segment'
 //    data must contain: all config fields
 ipcRenderer.on('import-to-segment', (event, data) =>{
-console.log('importing-to-segment')
   let analytics = new Analytics(data.writeKey)
   const {eventField, anonymousIdField, userIdField, timestampField, ...rest } = data
   propFields = distillPropFields([eventField, anonymousIdField, userIdField, timestampField], Object.keys(data.csvData[0]))
@@ -44,7 +45,25 @@ console.log('importing-to-segment')
 
 
   }
+  console.log('importer-importing-to-segment')
 })
+
+ipcRenderer.on('load-csv', (event, filePath) => {
+
+  let csvResults = []
+  fs.createReadStream(filePath)
+    .pipe(csv({separator:'|'}))
+    .on('data', (data) => csvResults.push(data))
+    .on('end', () => {
+      console.log('end');
+      ipcRenderer.send('csv-loaded', csvResults)
+    })
+    .on('error', (err) => console.log(err))
+    console.log('csv-loaded')
+
+})
+
+
 // TODO
 // save settings
 // retrieve settings
