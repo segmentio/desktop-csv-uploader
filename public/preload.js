@@ -9,20 +9,24 @@ contextBridge.exposeInMainWorld(
     "api", {
         send: (channel, data) => {
             // whitelist channels
-            let validChannels = ["load-csv", "import-to-segment"];
+            let validChannels = [
+              "load-csv",
+              "import-to-segment",
+              "update-event-preview"
+            ];
             if (validChannels.includes(channel)) {
                 ipcRenderer.send(channel, data);
             }
         },
         on: (channel, func) => {
-            let validChannels = ["csv-loaded"];
+            let validChannels = ["csv-loaded", "event-preview-updated"];
             if (validChannels.includes(channel)) {
                 // Deliberately strip event as it includes `sender`
                 ipcRenderer.on(channel, (event, ...args) => func(...args));
             }
         },
         removeAllListeners: (channel, func) => {
-          let validChannels = ["csv-loaded"];
+          let validChannels = ["csv-loaded", "event-preview-updated"];
           if (validChannels.includes(channel)) {
             ipcRenderer.removeAllListeners(channel)
           }

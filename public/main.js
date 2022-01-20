@@ -1,4 +1,8 @@
 const { app, BrowserWindow, dialog, ipcMain } = require('electron')
+// try {
+// 	require('electron-reloader')(module);
+// } catch {}
+
 const path = require('path');
 
 let uiWindow, importerWindow
@@ -68,8 +72,18 @@ function registerIPC() {
   // uiwindow --> main process --> importerWindow
     // settings and csv data are passed to the importer
   ipcMain.on('import-to-segment', (event, data) => {
-    importerWindow.webContents.send('import-to-segment', data);
+    importerWindow.webContents.send('import-to-segment', data)
     console.log('main-import-to-segment')
+  })
+
+  ipcMain.on('update-event-preview', (event, data) => {
+    importerWindow.webContents.send('update-event-preview', data)
+    console.log('main-update-event-preview')
+  })
+
+  ipcMain.on('event-preview-updated', (event, previewEvents) => {
+    uiWindow.webContents.send('event-preview-updated', previewEvents)
+    console.log('main-event-preview-updated')
   })
 
 }

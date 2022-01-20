@@ -43,7 +43,6 @@ function App() {
           eventIsSelected={eventIsSelected}
           setEventIsSelected={setEventIsSelected}
           />
-          {console.log(csvData)}
         </Pane>
     </div>
   );
@@ -77,6 +76,16 @@ class CustomMenu extends React.Component {
 }
 
 function CSVWorkspace(props){
+  const [previewedEvents, setPreviewedEvents] = useState([])
+  useEffect(()=>{
+    window.api.on('event-preview-updated', (data) => {
+      setPreviewedEvents(data)
+      console.log(data)
+      console.log('event-preview-updated')
+    });
+
+    return () => window.api.removeAllListeners('event-preview-updated');
+  })
   if (props.csvData){
     return(
       <Pane
@@ -89,8 +98,9 @@ function CSVWorkspace(props){
           csvData={props.csvData}
           setEventSelection={props.setEventSelection}
           setEventIsSelected={props.setEventIsSelected}/>
+          {console.log(previewedEvents)}
           <EventPreview
-          csvData={props.csvData}
+          csvData={previewedEvents.length > 0 ? previewedEvents : props.csvData}
           eventSelection={props.eventSelection}
           eventIsSelected={props.eventIsSelected}
           setEventIsSelected={props.setEventIsSelected}
@@ -132,7 +142,7 @@ function CSVTable (props){
   let csvRows = []
 
   if (!props.csvData) {
-    return( <Pane> no data {console.log(props)} </Pane>)
+    return( <Pane> no data </Pane>)
   }else {
     csvHeader = Object.keys(props.csvData[0])
     csvRows = props.csvData
@@ -206,17 +216,12 @@ function EventPreview(props) {
       <SideSheet
         isShown={props.eventSelection != null}
         onCloseComplete={() => props.setEventIsSelected(false)}
-        position={Position.BOTTOM}
+        position={Position.LEFT}
         height='300px'>
 
           <CodeMirror
             value={JSON.stringify(eventData, null, 2)}
-            extensions={[json()]}
-
-            // onChange={(value, viewUpdate) => {
-            //     console.log('value:', value);
-            //   }}
-              />
+            extensions={[json()]}/>
         </SideSheet>
       )
   }
@@ -232,20 +237,33 @@ function Configuration(props) {
   const [hasTrack, setHasTrack] = useState(false)
   const [hasIdentify, setHasIdentify] = useState(false)
 
+  const data = {
+    csvData:props.csvData,
+    userIdField: userIDField,
+    anonymousIdField: anonymousIDField,
+    timestampField: timestampField,
+    eventField: eventNameField,
+    writeKey: writeKey,
+    eventTypes: {
+      track: hasTrack,
+      identify:hasIdentify
+    },
+  };
+
+
+  useEffect( ()=>{
+    window.api.send('update-event-preview', data)
+    console.log('ui-update-event-preview')
+  }, [
+    userIDField,
+    anonymousIDField,
+    timestampField,
+    eventNameField,
+    hasTrack,
+    hasIdentify,
+  ])
 
   const importToSegment = () => {
-    const data = {
-      csvData:props.csvData,
-      userIdField: userIDField,
-      anonymousIdField: anonymousIDField,
-      timestampField: timestampField,
-      eventField: eventNameField,
-      writeKey: writeKey,
-      eventTypes: {
-        track: hasTrack,
-        identify:hasIdentify
-      },
-    }
     window.api.send('import-to-segment', data)
     console.log('import-to-segment')
   }
