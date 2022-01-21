@@ -29,8 +29,8 @@ function windowFactory() {
 function createUIWindow() {
   return(
     new BrowserWindow({
-      width: 800,
-      height: 600,
+      width: 1200,
+      height: 800,
       webPreferences: {
         nodeIntegration: false, // default, but explicit for securty
         contextIsolation: true, // protect against prototype pollution
@@ -43,6 +43,7 @@ function createUIWindow() {
 function createImporterWindow() {
   return(
     new BrowserWindow({
+      show:false,
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false
