@@ -121,9 +121,10 @@ function CSVWorkspace(props){
       margin={majorScale(10)}>
         <Text
         color="muted"
-        size="500px"
-        dispaly='inline-block'>
-        Import CSV, or work from Your Import History
+        size={600}
+        display='inline-block'
+        marginY={majorScale(2)}>
+        Import a CSV file, or work from your Import History
         </Text>
         <FilePicker
         onChange={filePath => {
@@ -374,7 +375,10 @@ function AddTransformation(props){
   if (addTransformation==true) {
     return(
       <Pane>
-        <TransformationSelectMenu columns={props.columns}/>
+        <TransformationSelectMenu
+        columns={props.columns}
+        setAddTransformation={setAddTransformation}
+        />
       </Pane>
     )
   } else {
@@ -407,6 +411,18 @@ function TransformationSelectMenu (props) {
       </SelectMenu>
       <TransformationTarget columns={props.columns} transformation={transformation} />
       <TransformationConditionalMenu transformation={transformation} />
+      <Button
+        marginLeft={majorScale(2)}
+        intent='danger'
+        onClick={()=>props.setAddTransformation(false)}>
+        delete
+      </Button>
+      <Button
+        marginLeft={majorScale(1)}
+        intent='sucess'
+        onClick={()=>props.setAddTransformation(false)}>
+        save
+      </Button>
     </Pane>
   )
 }
