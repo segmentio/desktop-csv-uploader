@@ -11,7 +11,7 @@ There are two renderer processes in this app, uiWindow and importerWindow. uiWin
 The main process controls the lifecycle of the 2 renderer processes, as well as the communication between them via IPC (Inter process communication).
 
 
-### development
+### Development
 
 1.   `yarn install` to install dependencies
 2.   `yarn start` to start the react development server
