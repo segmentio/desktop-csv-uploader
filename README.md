@@ -17,7 +17,6 @@ The main process controls the lifecycle of the 2 renderer processes, as well as 
 2.   `yarn start` to start the react development server
 3.   `yarn electron-dev` to start electron
 
+### Testing
 
-### `yarn test`
-
-Launches the test runner
+1. `yarn test` Launches the test runner
