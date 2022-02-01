@@ -19,7 +19,10 @@ import {
   IconButton,
   majorScale,
   TrashIcon,
-  toaster
+  toaster,
+  Tooltip,
+  Paragraph,
+  InfoSignIcon
 } from 'evergreen-ui';
 
 
@@ -304,27 +307,32 @@ function Configuration(props) {
       <SettingSelector
       options={props.columnNames}
       label="UserId Field"
-      required={anonymousIDField ? false : true}
+      hint='Either a userId or anonymousId is required'
+      required={anonymousIDField || userIDField ? false : true}
       onChange={setUserIDField}
       isShown={true}
       />
       <SettingSelector
       options={props.columnNames}
       label="AnonymousId Field"
-      required={userIDField ? false : true}
+      hint='Either a userId or anonymousId is required'
+      required={anonymousIDField || userIDField ? false : true}
       onChange={setAnonymousIDField}
       isShown={true}
       />
       <SettingSelector
       options={props.columnNames}
       label="Timestamp Field"
-      required={false}
+      hint="If you don't provide a time stamp, Segment will use the current time"
+      required={timestampField ? false : true}
       onChange={setTimestampField}
       isShown={true}
       />
       <SettingSelector
       options={props.columnNames}
       label="Event Field"
+      hint="No event field, no worries! Just apply a transformation to attach a defalut event name to your track calls"
+      required={false}
       onChange={setEventNameField}
       isShown={hasTrack? true : false}
       />
@@ -337,6 +345,7 @@ function Configuration(props) {
       onClick={() => {importToSegment()}}>
         Import
       </Button>
+      {console.log(data)}
     </Pane>
   )
 }
@@ -376,22 +385,25 @@ function WriteKeyForm(props) {
 function SettingSelector(props) {
   if (props.isShown) {
     return (
-      <SelectField
-        options={props.options}
-        label={props.label}
-        required={props.required}
-        validationMessage={props.validationMessage}
-        onChange={e => {
-          props.onChange(e.target.value)
-        }}>
-          <option value={null}/>
-          {
-            props.options.map(option =>
-            <option value={option}>
-            {option}
-            </option>)
-          }
-      </SelectField>
+      <Pane>
+        <SelectField
+          options={props.options}
+          label={props.label}
+          required={props.required}
+          hint={props.hint}
+          description={props.description}
+          onChange={e => {
+            props.onChange(e.target.value)
+          }}>
+            <option value={null}/>
+            {
+              props.options.map(option =>
+              <option value={option}>
+              {option}
+              </option>)
+            }
+        </SelectField>
+      </Pane>
     )
   } else {
     return null
