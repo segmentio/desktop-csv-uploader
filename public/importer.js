@@ -30,15 +30,24 @@ ipcRenderer.on('load-csv', (event, filePath) => {
 ipcRenderer.on('import-to-segment', (event, data) => {
   try {
     const analytics = new Analytics(data.writeKey)
+
+    if (!data.eventTypes.track && !data.eventTypes.identify){
+      throw new Error("No event types selected")
+    }
+
     for (let i=0; i<data.csvData.length; i++) {
         events = formatSegmentCalls(data.csvData[i], data, transformations)
-        if (events.track){
-          console.log(events.track)
-          analytics.track(events.track)
-        }
-        if (events.identify){
-          console.log(events.track)
-          analytics.identify(events.identify)
+        try {
+          if (events.track){
+            analytics.track(events.track)
+          }
+          if (events.identify){
+            analytics.identify(events.identify)
+          }
+        } catch (error){
+            error.message = error.message + ' This error occurred on line: ' + i
+            throw error
+          break
         }
       }
 
@@ -46,7 +55,7 @@ ipcRenderer.on('import-to-segment', (event, data) => {
       console.log('importer-importing-to-segment')
   } catch (error) {
     console.log(error)
-    ipcRenderer.send('import-error', error)
+    ipcRenderer.send('import-error', error.message)
   };
 
 
@@ -150,21 +159,17 @@ function sortTransformations(transformations){
   }
 
   for (const transformation of transformations){
-    console.log(transformation)
     switch(transformation.type) {
       case 'Ignore Column':
         switch(transformation.conditional) {
           case 'Track Events':
             sorted['Ignore Column']['Track Events'].push(transformation.target)
-            console.log(transformation.conditional)
             break
           case 'Identify Events':
             sorted['Ignore Column']['Identify Events'].push(transformation.target)
-            console.log(transformation.conditional)
             break
           case 'All Events':
             sorted['Ignore Column']['All Events'].push(transformation.target)
-            console.log(transformation.conditional)
             break
       };
 
@@ -175,7 +180,6 @@ function sortTransformations(transformations){
 
     }
   }
-  console.log(sorted)
   return sorted
 }
 
