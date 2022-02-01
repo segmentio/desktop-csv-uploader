@@ -19,14 +19,19 @@ contextBridge.exposeInMainWorld(
             }
         },
         on: (channel, func) => {
-            let validChannels = ["csv-loaded", "event-preview-updated"];
+            let validChannels = [
+              "csv-loaded",
+              "event-preview-updated",
+              "import-complete",
+              "import-error"
+            ];
             if (validChannels.includes(channel)) {
                 // Deliberately strip event as it includes `sender`
                 ipcRenderer.on(channel, (event, ...args) => func(...args));
             }
         },
         removeAllListeners: (channel, func) => {
-          let validChannels = ["csv-loaded", "event-preview-updated"];
+          let validChannels = ["csv-loaded", "event-preview-updated", "import-complete", "import-error"];
           if (validChannels.includes(channel)) {
             ipcRenderer.removeAllListeners(channel)
           }

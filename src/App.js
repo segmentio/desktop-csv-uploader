@@ -18,7 +18,8 @@ import {
   FilePicker,
   IconButton,
   majorScale,
-  TrashIcon
+  TrashIcon,
+  toaster
 } from 'evergreen-ui';
 
 
@@ -50,7 +51,6 @@ function App() {
     </div>
   );
 }
-
 export default App;
 
 class CustomMenu extends React.Component {
@@ -80,14 +80,32 @@ class CustomMenu extends React.Component {
 
 function CSVWorkspace(props){
   const [previewedEvents, setPreviewedEvents] = useState([])
+  const [importComplete, setImportComplete] = useState(false)
+
   useEffect(()=>{
     window.api.on('event-preview-updated', (data) => {
       setPreviewedEvents(data)
       console.log('event-preview-updated')
     });
 
-    return () => window.api.removeAllListeners('event-preview-updated');
+    window.api.on('import-complete', (count)=> {
+      toaster.success('Import Successful, check the Source debugger in your Segment workspace!')
+      console.log('import-complete')
+    });
+
+    window.api.on('import-error', (error)=> {
+      toaster.danger('Oops Something went wrong:' + '\n' + error)
+      console.log('import-error')
+    });
+
+    return () => {
+      window.api.removeAllListeners('event-preview-updated')
+      window.api.removeAllListeners('import-complete')
+      window.api.removeAllListeners('import-error')
+
+    }
   })
+
   if (props.csvData){
     return(
       <Pane
@@ -134,11 +152,11 @@ function CSVWorkspace(props){
           window.api.send("load-csv", filePath[0].path)
           }}
         />
-
       </Pane>
     )
   }
 }
+
 function CSVTable (props){
   let csvHeader = []
   let csvRows = []
@@ -292,7 +310,7 @@ function Configuration(props) {
       csvData={props.csvData}/>
       <Button
       appearance="primary"
-      onClick={() => importToSegment()}>
+      onClick={() => {importToSegment()}}>
         Import
       </Button>
     </Pane>
@@ -317,8 +335,6 @@ function EventTypeSwitch(props) {
   )
 }
 
-
-
 function WriteKeyForm(props) {
   const [value, setValue] = React.useState('')
   return (
@@ -330,8 +346,8 @@ function WriteKeyForm(props) {
     setValue(e.target.value)
     props.onChange(e.target.value)
   }}/>
-)
-}
+)}
+
 function SettingSelector(props) {
   return (
     <SelectField
@@ -355,7 +371,6 @@ function SettingSelector(props) {
 function Transformations(props){
   const columns=Object.keys(props.csvData[0])
 
-
   function handleAdd(item){
     const newList = props.transformationList.concat({...item, id: uuidv4()});
     props.setTransformationList(newList)
@@ -367,25 +382,22 @@ function Transformations(props){
   }
 
   return(
-
       <Pane marginY={majorScale(2)}>
         <Heading> Transformations </Heading>
         {props.transformationList.map((transformation)=>(
-          <Transformation
+          <TransformationDisplay
           transformation={transformation}
           handleRemoval={handleRemoval}
           />
-
         ))}
         <Pane marginY={majorScale(2)}>
           <AddTransformation columns={columns} handleAdd={handleAdd}/>
         </Pane>
       </Pane>
-
   )
 }
 
-function Transformation(props){
+function TransformationDisplay(props){
   return (
     <StatefulRow key={props.transformation.index}>
       <Pane marginY={majorScale(3)} marginX={majorScale(1)}>

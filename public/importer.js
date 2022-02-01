@@ -28,21 +28,28 @@ ipcRenderer.on('load-csv', (event, filePath) => {
 
 
 ipcRenderer.on('import-to-segment', (event, data) => {
-  const analytics = new Analytics(data.writeKey)
-
-  for (let i=0; i<data.csvData.length; i++) {
-      events = formatSegmentCalls(data.csvData[i], data, transformations)
-      if (events.track){
-        console.log(events.track)
-        analytics.track(events.track)
+  try {
+    const analytics = new Analytics(data.writeKey)
+    for (let i=0; i<data.csvData.length; i++) {
+        events = formatSegmentCalls(data.csvData[i], data, transformations)
+        if (events.track){
+          console.log(events.track)
+          analytics.track(events.track)
+        }
+        if (events.identify){
+          console.log(events.track)
+          analytics.identify(events.identify)
+        }
       }
-      if (events.identify){
-        console.log(events.track)
-        analytics.identify(events.identify)
-      }
-    }
 
-    console.log('importer-importing-to-segment')
+      ipcRenderer.send('import-complete', data.csvData.length)
+      console.log('importer-importing-to-segment')
+  } catch (error) {
+    console.log(error)
+    ipcRenderer.send('import-error', error)
+  };
+
+
   })
 
 
@@ -57,29 +64,6 @@ ipcRenderer.on('update-event-preview', (event, data) => {
   }
   ipcRenderer.send('event-preview-updated', previewEvents)
 
-
-
-  // OLD code
-
-  //const {eventField, anonymousIdField, userIdField, timestampField, transformations, ...rest } = data
-  // fieldsToIgnoreArray = [eventField, anonymousIdField, userIdField, timestampField]
-  //
-  // const propFields = distillFields(fieldsToIgnoreArray, Object.keys(data.csvData[0]))
-  // const topLevelFields = {
-  //   event:eventField,
-  //   anonymousId:anonymousIdField,
-  //   userId:userIdField,
-  //   timestamp:timestampField
-  // }
-  //
-  // let previewEvents = []
-  // for (let i=0; i<data.csvData.length; i++) {
-  //   if (data.eventTypes['track']) {
-  //     trackEvent = formatTrackEvent(data.csvData[i], topLevelFields, propFields)
-  //     previewEvents.push(trackEvent)
-  //   }
-  // }
-  // ipcRenderer.send('event-preview-updated', previewEvents)
 })
 
 function formatTrackEvent(csvRow, topLevelFields, propFields) {
@@ -199,14 +183,14 @@ function sortTransformations(transformations){
 function formatSegmentCalls(csvRow, config, transformations){
   formattedEvents = {}
   let sendTrack = false
-  let sendidentify = false
+  let sendIdentify = false
   // decide what calls to send in
   if (config.eventTypes['track']) { //need to implement an ignore row transform here
     sendTrack = true
-  } else { sendTrack = false }
+  }
   if (config.eventTypes['identify']) { //need to implement an ignore row transform here
     sendIdentify = true
-  } else { sendIdentify = false }
+  }
 
   const allFields = Object.keys(config.csvData[0])
   const {eventField, anonymousIdField, userIdField, timestampField, ...rest } = config

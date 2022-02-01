@@ -87,6 +87,16 @@ function registerIPC() {
     console.log('main-event-preview-updated')
   })
 
+  ipcMain.on('import-complete', (event, count)=>{
+    uiWindow.webContents.send('import-complete', count)
+    console.log('main-import-complete')
+  })
+
+  ipcMain.on('import-error', (event, error)=>{
+    uiWindow.webContents.send('import-error', error)
+    console.log('import-error')
+  })
+
 }
 
 
