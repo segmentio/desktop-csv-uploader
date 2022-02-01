@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import {v4 as uuidv4} from 'uuid';
 import CodeMirror from '@uiw/react-codemirror';
 import {json} from '@codemirror/lang-json';
 import {
@@ -15,7 +16,9 @@ import {
   TextInputField,
   Switch,
   FilePicker,
-  majorScale
+  IconButton,
+  majorScale,
+  TrashIcon
 } from 'evergreen-ui';
 
 
@@ -97,7 +100,6 @@ function CSVWorkspace(props){
           csvData={props.csvData}
           setEventSelection={props.setEventSelection}
           setEventIsSelected={props.setEventIsSelected}/>
-          {console.log(previewedEvents)}
           <EventPreview
           csvData={previewedEvents.length > 0 ? previewedEvents : props.csvData}
           eventSelection={props.eventSelection}
@@ -168,6 +170,7 @@ function CSVTable (props){
           {
             csvRows.map( (row, index) =>
                 <StatefulRow
+                isSelectable={true}
                 index={index}
                 setEventSelection={props.setEventSelection}
                 setEventIsSelected={props.setEventIsSelected}>
@@ -194,7 +197,7 @@ function StatefulRow(props) {
   return(
     <Table.Row
     key={props.index}
-    isSelectable
+    isSelectable={props.isSelectable}
     flexGrow={1}
     onSelect={() => {
       props.setEventSelection(rowNumber)
@@ -236,6 +239,7 @@ function Configuration(props) {
   const [writeKey, setWriteKey] = useState(null)
   const [hasTrack, setHasTrack] = useState(false)
   const [hasIdentify, setHasIdentify] = useState(false)
+  const [transformationList, setTransformationList] = useState([])
 
   const data = {
     csvData:props.csvData,
@@ -248,6 +252,7 @@ function Configuration(props) {
       track: hasTrack,
       identify:hasIdentify
     },
+    transformationList:transformationList
   };
 
 
@@ -281,7 +286,10 @@ function Configuration(props) {
       <SettingSelector options={props.columnNames} label="AnonymousID Field" onChange={setAnonymousIDField} />
       <SettingSelector options={props.columnNames} label="Timestamp Field" onChange={setTimestampField} />
       <SettingSelector options={props.columnNames} label="Event Field" onChange={setEventNameField} />
-      <Transformations csvData={props.csvData}/>
+      <Transformations
+      transformationList={transformationList}
+      setTransformationList={setTransformationList}
+      csvData={props.csvData}/>
       <Button
       appearance="primary"
       onClick={() => importToSegment()}>
@@ -346,28 +354,63 @@ function SettingSelector(props) {
 
 function Transformations(props){
   const columns=Object.keys(props.csvData[0])
-  console.log(columns)
+
+
+  function handleAdd(item){
+    const newList = props.transformationList.concat({...item, id: uuidv4()});
+    props.setTransformationList(newList)
+  }
+
+  function handleRemoval(id){
+    const newList = props.transformationList.filter((transformation) => transformation.id !== id)
+    props.setTransformationList(newList)
+  }
+
   return(
-    <Pane marginY={majorScale(2)}>
-      <TransformationListDisplay/>
-      <AddTransformation columns={columns}/>
-    </Pane>
+
+      <Pane marginY={majorScale(2)}>
+        <Heading> Transformations </Heading>
+        {props.transformationList.map((transformation)=>(
+          <Transformation
+          transformation={transformation}
+          handleRemoval={handleRemoval}
+          />
+
+        ))}
+        <Pane marginY={majorScale(2)}>
+          <AddTransformation columns={columns} handleAdd={handleAdd}/>
+        </Pane>
+      </Pane>
+
   )
 }
 
-function TransformationListDisplay() {
-  const [transformationsList, setTransformations] = useState([])
-  return(
-  <Pane>
-  {transformationsList.map(transformation => {
-    <>
-    <Text>{transformation.type}</Text>
-    <Text>{transformation.value}</Text>
-    </>
-  })}
-  </Pane>
+function Transformation(props){
+  return (
+    <StatefulRow key={props.transformation.index}>
+      <Pane marginY={majorScale(3)} marginX={majorScale(1)}>
+        <Button marginRight={majorScale(1)}>
+        {props.transformation.type}
+        </Button>
+
+        <Button marginRight={majorScale(1)}>
+        {props.transformation.target}
+        </Button>
+        <Text marginRight={majorScale(1)}>for</Text>
+        <Button marginRight={majorScale(1)}>
+        {props.transformation.conditional}
+        </Button>
+        <Button
+          marginLeft={majorScale(1)}
+          intent='danger'
+          onClick={() => props.handleRemoval(props.transformation.id)}>
+          delete
+        </Button>
+      </Pane>
+    </StatefulRow>
   )
 }
+
 
 function AddTransformation(props){
   const [addTransformation, setAddTransformation] = useState(false)
@@ -375,9 +418,11 @@ function AddTransformation(props){
   if (addTransformation==true) {
     return(
       <Pane>
-        <TransformationSelectMenu
+        <TransformationTypeMenu
         columns={props.columns}
         setAddTransformation={setAddTransformation}
+        handleAdd={props.handleAdd}
+        transformationList={props.transformationList}
         />
       </Pane>
     )
@@ -388,73 +433,99 @@ function AddTransformation(props){
     Add Transformation
       </Button>
   )}
-
 }
 
+function TransformationTypeMenu (props) {
+  const [transformationType, setTransformationType] = useState(null)
+  const [transformationTarget, setTransformationTarget] = useState(null)
+  const [transformationConditional, setTransformationConditional] = useState(null)
+  const [selected, setSelected] = useState(null)
 
-function TransformationSelectMenu (props) {
-  const [transformation, setTransformation] = React.useState(null)
   return (
     <Pane
     marginY={majorScale(2)}
-    border={majorScale(1)}
     display="inline-flex"
     >
       <SelectMenu
-        title="Select name"
+        title="Transformation Type"
         options={['Ignore Column', ''].map((label) => ({ label, value: label }))}
-        selected={transformation}
+        selected={transformationType}
         hasFilter={false}
         hasTitle={false}
-        onSelect={(item) => setTransformation(item.value)}>
-        <Button>{transformation || 'Select Transformation...'}</Button>
+        onSelect={(item) => {
+          setTransformationType(item.value)
+          setSelected(item.value)
+        }}>
+        <Button>{selected || 'Select Transformation Type'}</Button>
       </SelectMenu>
-      <TransformationTarget columns={props.columns} transformation={transformation} />
-      <TransformationConditionalMenu transformation={transformation} />
+
+      <TransformationTarget
+       columns={props.columns}
+       transformationType={transformationType}
+       setTransformationTarget={setTransformationTarget}
+       />
+      <TransformationConditional
+       transformationType={transformationType}
+       setTransformationConditional={setTransformationConditional}/>
       <Button
         marginLeft={majorScale(2)}
         intent='danger'
-        onClick={()=>props.setAddTransformation(false)}>
+        onClick={()=>{
+          setTransformationType(null)
+          setTransformationTarget(null)
+          setTransformationConditional(null)
+          props.setAddTransformation(false)
+        }}>
         delete
       </Button>
       <Button
         marginLeft={majorScale(1)}
-        intent='sucess'
-        onClick={()=>props.setAddTransformation(false)}>
+        intent='success'
+        onClick={()=>{
+          if (transformationType && transformationTarget && transformationConditional){
+              props.handleAdd({type:transformationType, target:transformationTarget, conditional:transformationConditional})
+          }
+          setTransformationType(null)
+          setTransformationTarget(null)
+          setTransformationConditional(null)
+          props.setAddTransformation(false)
+        }}>
         save
       </Button>
     </Pane>
   )
 }
 function TransformationTarget(props) {
-  const [target, setTarget] = React.useState(null)
+  const [selected, setSelected] = React.useState(null)
 
-  if (!props.transformation){
+  if (!props.transformationType){
     return null
-  } else if (props.transformation == 'Ignore Column') {
+  } else if (props.transformationType == 'Ignore Column') {
     return(
       <Pane marginX={majorScale(1)}>
 
         <SelectMenu
-          title="columnName = "
           options={props.columns.map((label) => ({ label, value: label }))}
-          selected={target}
+          selected={selected}
           hasFilter={false}
           hasTitle={false}
-          onSelect={(item) => setTarget(item.value)}>
-          <Button>{target || props.columns[0]}</Button>
+          onSelect={(item) => {
+            setSelected(item.value)
+            props.setTransformationTarget(item.value)
+          }}>
+          <Button>{selected || 'Select Column...'}</Button>
         </SelectMenu>
       </Pane>
     )
   }
 }
 
-function TransformationConditionalMenu(props) {
-  const [conditional, setConditional] = React.useState(null)
+function TransformationConditional(props) {
+  const [selected, setSelected] = React.useState(null)
 
-  if (!props.transformation){
+  if (!props.transformationType){
     return null
-  } else if (props.transformation == 'Ignore Column') {
+  } else if (props.transformationType == 'Ignore Column') {
     return(
       <Pane
       marginx={majorScale(2)}
@@ -464,12 +535,15 @@ function TransformationConditionalMenu(props) {
         </Text>
         <SelectMenu
           title="columnName = "
-          options={['For All Events','For Track Events', 'For Identify Events'].map((label) => ({ label, value: label }))}
-          selected={conditional}
+          options={['All Events','Track Events', 'Identify Events'].map((label) => ({ label, value: label }))}
+          selected={selected}
           hasFilter={false}
           hasTitle={false}
-          onSelect={(item) => setConditional(item.value)}>
-          <Button>{conditional || 'Select Transformation...'}</Button>
+          onSelect={(item) => {
+            setSelected(item.value)
+            props.setTransformationConditional(item.value)
+          }}>
+          <Button>{selected || 'Select Conditional...'}</Button>
         </SelectMenu>
       </Pane>
     )

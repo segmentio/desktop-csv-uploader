@@ -43,7 +43,7 @@ function createUIWindow() {
 function createImporterWindow() {
   return(
     new BrowserWindow({
-      show:false,
+      // show:false,
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false
@@ -88,9 +88,6 @@ function registerIPC() {
   })
 
 }
-
-
-
 
 
 //OS SPECIFIC METHODS
