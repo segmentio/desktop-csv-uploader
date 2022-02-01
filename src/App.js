@@ -89,12 +89,13 @@ function CSVWorkspace(props){
     });
 
     window.api.on('import-complete', (count)=> {
-      toaster.success('Import Successful, check the Source debugger in your Segment workspace!')
+      toaster.success('Import Successful!', {description:'Check the source debugger in your Segment workspace!'})
       console.log('import-complete')
     });
 
     window.api.on('import-error', (error)=> {
-      toaster.danger('Oops Something went wrong:' + '\n' + error)
+      console.log(error)
+      toaster.danger('Oops Something went wrong... ', {description:error})
       console.log('import-error')
     });
 
@@ -300,10 +301,33 @@ function Configuration(props) {
         <EventTypeSwitch label='Track' onChange={setHasTrack}/>
         <EventTypeSwitch label='Identify' onChange={setHasIdentify}/>
       </Pane>
-      <SettingSelector options={props.columnNames} label="UserID Field" onChange={setUserIDField} />
-      <SettingSelector options={props.columnNames} label="AnonymousID Field" onChange={setAnonymousIDField} />
-      <SettingSelector options={props.columnNames} label="Timestamp Field" onChange={setTimestampField} />
-      <SettingSelector options={props.columnNames} label="Event Field" onChange={setEventNameField} />
+      <SettingSelector
+      options={props.columnNames}
+      label="UserId Field"
+      required={anonymousIDField ? false : true}
+      onChange={setUserIDField}
+      isShown={true}
+      />
+      <SettingSelector
+      options={props.columnNames}
+      label="AnonymousId Field"
+      required={userIDField ? false : true}
+      onChange={setAnonymousIDField}
+      isShown={true}
+      />
+      <SettingSelector
+      options={props.columnNames}
+      label="Timestamp Field"
+      required={false}
+      onChange={setTimestampField}
+      isShown={true}
+      />
+      <SettingSelector
+      options={props.columnNames}
+      label="Event Field"
+      onChange={setEventNameField}
+      isShown={hasTrack? true : false}
+      />
       <Transformations
       transformationList={transformationList}
       setTransformationList={setTransformationList}
@@ -339,33 +363,39 @@ function WriteKeyForm(props) {
   const [value, setValue] = React.useState('')
   return (
     <TextInputField
-    required
+    required={props.required | true}
     value={value}
     label='Write Key'
     onChange={e =>{
-    setValue(e.target.value)
-    props.onChange(e.target.value)
-  }}/>
-)}
+      setValue(e.target.value)
+      props.onChange(e.target.value)
+    }}/>
+  )
+}
 
 function SettingSelector(props) {
-  return (
-    <SelectField
-      options={props.options}
-      label={props.label}
-      required
-      onChange={e => {
-        props.onChange(e.target.value)
-      }}>
-        <option value={null}/>
-        {
-          props.options.map(option =>
-          <option value={option}>
-          {option}
-          </option>)
-        }
-    </SelectField>
-  )
+  if (props.isShown) {
+    return (
+      <SelectField
+        options={props.options}
+        label={props.label}
+        required={props.required}
+        validationMessage={props.validationMessage}
+        onChange={e => {
+          props.onChange(e.target.value)
+        }}>
+          <option value={null}/>
+          {
+            props.options.map(option =>
+            <option value={option}>
+            {option}
+            </option>)
+          }
+      </SelectField>
+    )
+  } else {
+    return null
+  }
 }
 
 function Transformations(props){
