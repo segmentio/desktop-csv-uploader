@@ -277,7 +277,6 @@ function Configuration(props) {
     transformationList:transformationList
   };
 
-
   useEffect( ()=>{
     window.api.send('update-event-preview', data)
     console.log('ui-update-event-preview')

@@ -32,6 +32,7 @@
     "react-dom": "^17.0.2",
     "react-is": "^17.0.2",
     "react-scripts": "^5.0.0",
+    "sqlite3": "^5.0.2",
     "uuid": "^8.3.2",
     "web-vitals": "^2.1.0",
     "webpack": "^5.67.0",
@@ -42,7 +43,8 @@
     "build": "react-scripts build",
     "test": "electron-mocha --inspect",
     "eject": "react-scripts eject",
-    "electron-dev": "electron ."
+    "electron-dev": "electron .",
+    "migrate-db": "node migrate"
   },
   "eslintConfig": {
     "extends": [

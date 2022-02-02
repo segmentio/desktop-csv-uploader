@@ -3,16 +3,14 @@ const fs = require('fs');
 const csv = require('csv-parser')
 const Analytics = require('analytics-node');
 const ipcRenderer = electron.ipcRenderer;
+const sqlite3 = require('sqlite3').verbose()
+
+
+  db = new sqlite3.Database('importer.db');
 
 // manual test write key HPzXrG6JTe3kf4a8McAo1eM8TGQnkm3e
 
-// API
-
-// config field for write key
-//ipc render and ipc main events including preload for 'import-to-segment'
-//    data must contain: all config fields
-
-
+// IPC listeners
 ipcRenderer.on('load-csv', (event, filePath) => {
   let csvResults = []
   fs.createReadStream(filePath)
@@ -52,6 +50,7 @@ ipcRenderer.on('import-to-segment', (event, data) => {
       }
 
       ipcRenderer.send('import-complete', data.csvData.length)
+      sqlite3
       console.log('importer-importing-to-segment')
   } catch (error) {
     console.log(error)
