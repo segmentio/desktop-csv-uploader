@@ -3,10 +3,7 @@ const fs = require('fs');
 const csv = require('csv-parser')
 const Analytics = require('analytics-node');
 const ipcRenderer = electron.ipcRenderer;
-const sqlite3 = require('sqlite3').verbose()
-
-
-  db = new sqlite3.Database('importer.db');
+const {insertImportRecord, getAllImports} = require('./utils/dbQueries')
 
 // manual test write key HPzXrG6JTe3kf4a8McAo1eM8TGQnkm3e
 
@@ -48,17 +45,16 @@ ipcRenderer.on('import-to-segment', (event, data) => {
           break
         }
       }
-
       ipcRenderer.send('import-complete', data.csvData.length)
-      sqlite3
+      const values = {config:JSON.stringify(data), size:data.csvData.length}
+      insertImportRecord(values)
+      console.log(values)
       console.log('importer-importing-to-segment')
   } catch (error) {
     console.log(error)
     ipcRenderer.send('import-error', error.message)
   };
-
-
-  })
+})
 
 
 ipcRenderer.on('update-event-preview', (event, data) => {
@@ -71,7 +67,12 @@ ipcRenderer.on('update-event-preview', (event, data) => {
     }
   }
   ipcRenderer.send('event-preview-updated', previewEvents)
+})
 
+ipcRenderer.on('load-history', (event,data)=>{
+  const history = getAllImports()
+  console.log(history)
+  ipcRenderer.send('history-loaded', history)
 })
 
 function formatTrackEvent(csvRow, topLevelFields, propFields) {

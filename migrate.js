@@ -1,5 +1,7 @@
-const sqlite3 = require('sqlite3').verbose()
+const sqlite3 = require('better-sqlite3')
 
-db = new sqlite3.Database('importer.db');
+const db = new sqlite3('importer.db');
+const stmt = db.prepare("CREATE TABLE IF NOT EXISTS imports(config, size)")
+stmt.run()
 
-db.create
+console.log('db migrated')

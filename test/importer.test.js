@@ -1,10 +1,8 @@
 const assert = require('assert');
 const {ipcMain} = require('electron');
-const chai = require('chai');
-const spies  = require('chai-spies');
-chai.use(spies);
-const createImporterWindow = require('../../csvelectron')
-
+const sqlite3 = require('better-sqlite3')
+const fs = require('fs')
+const {insertImportRecord, getAllImports} = require('../public/utils/dbQueries')
 
 const data = {
   'csvData': [
@@ -20,9 +18,7 @@ const data = {
       'isnew': true,
       'last_name': 'Escofier',
       'signupdate': '2018-12-13T00:52:29Z',
-      'source': 'Google Paid',
       'userid': '123456',
-      'zip':'7350'
     }
   ],
   'userIDField': 'userid',
@@ -34,18 +30,16 @@ const data = {
   'identifyData': true
 }
 
-describe('importerWindow', ()=>{
-  describe('import-to-segment', ()=>{
-    it('should return "successful-segment-import" event when "segment-import" event is sent with complete data', () => {
-      const importerWindow = createImporterWindow()
-      function handler() {
-        console.log('YOOOOOOO')
-      }
-      const spy = chai.spy(handler);
 
-      ipcMain.on('import-to-segment-success', spy)
-      importerWindow.webContents.send('import-to-segment', data)
-      chai.expect(spy).to.have.been.called
+describe('importerWindow', ()=>{
+  describe('database-queries', ()=>{
+    const path = './test/test.db'
+    it('should insert and retrieve historical import data from "history" table', () => {
+      const values = {config:JSON.stringify(data), size:data.csvData.length}
+      const insert = insertImportRecord(values, path)
+      const imports = getAllImports(path)
+      assert(imports[0].config && imports[0].size)
+      fs.unlinkSync(path)
     })
   })
 })
