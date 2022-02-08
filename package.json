@@ -18,11 +18,13 @@
     "autoprefixer": "10.0.2",
     "babel-cli": "^6.26.0",
     "babel-loader": "^8.2.3",
+    "better-sqlite3": "^7.5.0",
     "chai": "^4.3.4",
     "chai-spies": "^1.0.0",
     "csv-parser": "^3.0.0",
     "electron": "^16.0.5",
     "electron-mocha": "^11.0.2",
+    "electron-rebuild": "^3.2.7",
     "electron-reloader": "^1.2.1",
     "evergreen-ui": "^6.6.3",
     "html-webpack-plugin": "^5.5.0",
@@ -42,7 +44,8 @@
     "build": "react-scripts build",
     "test": "electron-mocha --inspect",
     "eject": "react-scripts eject",
-    "electron-dev": "electron ."
+    "electron-dev": "electron .",
+    "migrate": "node migrate"
   },
   "eslintConfig": {
     "extends": [

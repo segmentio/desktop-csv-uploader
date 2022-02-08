@@ -31,6 +31,7 @@ function App() {
   const [csvData, setCSVData] = useState(null)
   const [eventSelection, setEventSelection] = useState(null)
   const [eventIsSelected, setEventIsSelected] = useState(false)
+  const [menuSelection, setMenuSelection] = useState('Importer')
 
   useEffect( () => {
     window.api.on("csv-loaded", (data) => {setCSVData(data)})
@@ -42,42 +43,57 @@ function App() {
         <Pane
         display="grid"
         gridTemplateColumns= "1fr 5fr">
-          <CustomMenu/>
-          <CSVWorkspace
+          <CustomMenu setMenuSelection={setMenuSelection}/>
+          <ViewWrapper
           csvData={csvData}
           eventSelection={eventSelection}
-          setEventSelection={setEventSelection}
           eventIsSelected={eventIsSelected}
-          setEventIsSelected={setEventIsSelected}
-          />
+          menuSelection={menuSelection}/>
         </Pane>
     </div>
   );
 }
 export default App;
 
-class CustomMenu extends React.Component {
-  render() {
+function CustomMenu(props){
     return (
       <Menu>
         <Menu.Group>
           <Pane>
-            <Menu.Item>
-            Importer
+            <Menu.Item onSelect={() => {props.setMenuSelection('Importer')}}>
+              Importer
             </Menu.Item>
           </Pane>
           <Pane>
-              <Menu.Item
-              onSelect={() => {console.log("history")}}>
-              History
+              <Menu.Item onSelect={() => {props.setMenuSelection('History')}}>
+                History
               </Menu.Item>
           </Pane>
           <Pane>
-              <Menu.Item> Settings </Menu.Item>
+              <Menu.Item>
+                Settings
+              </Menu.Item>
           </Pane>
         </Menu.Group>
       </Menu>
     );
+}
+
+function ViewWrapper(props){
+  if (props.menuSelection == 'Importer') {
+    return(
+      <CSVWorkspace
+      csvData={props.csvData}
+      eventSelection={props.eventSelection}
+      setEventSelection={props.setEventSelection}
+      eventIsSelected={props.eventIsSelected}
+      setEventIsSelected={props.setEventIsSelected}
+      />
+    )
+  } else if (props.menuSelection == 'History'){
+    return(
+      <History/>
+    )
   }
 }
 
@@ -106,7 +122,6 @@ function CSVWorkspace(props){
       window.api.removeAllListeners('event-preview-updated')
       window.api.removeAllListeners('import-complete')
       window.api.removeAllListeners('import-error')
-
     }
   })
 
@@ -156,6 +171,59 @@ function CSVWorkspace(props){
           window.api.send("load-csv", filePath[0].path)
           }}
         />
+      </Pane>
+    )
+  }
+}
+
+
+function History(props) {
+  const [history, setHistory] = useState(null)
+
+  useEffect( ()=>{
+    window.api.send('load-history', null);
+    window.api.on('history-loaded', (data)=>{
+      console.log('history-loaded')
+      setHistory(data)
+    });
+
+    return ()=>{
+      window.api.removeAllListeners('load-history');
+      window.api.removeAllListeners('history-loaded');
+    }
+  }, [])
+
+  if (history){
+    return (
+    <Pane
+    marginY={majorScale(4)}>
+    <Heading>Import History</Heading>
+      <Table>
+        <Table.Head>
+            <Table.TextHeaderCell>
+                Import Name
+            </Table.TextHeaderCell>
+            <Table.TextHeaderCell>
+                Size
+            </Table.TextHeaderCell>
+            <Table.TextHeaderCell>
+                Status
+            </Table.TextHeaderCell>
+        </Table.Head>
+        <Table.Body height={240}>
+  {history.map((row) => (
+    <Table.Row key={row} isSelectable>
+      <Table.TextCell>{row.size}</Table.TextCell>
+      <Table.TextCell isNumber>{row.success}</Table.TextCell>
+    </Table.Row>
+  ))}
+</Table.Body>
+      </Table>
+    </Pane>
+  )} else {
+    return (
+      <Pane>
+      no history
       </Pane>
     )
   }
@@ -276,7 +344,6 @@ function Configuration(props) {
     },
     transformationList:transformationList
   };
-
 
   useEffect( ()=>{
     window.api.send('update-event-preview', data)

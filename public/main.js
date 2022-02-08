@@ -14,6 +14,7 @@ app.whenReady()
 .then(()=>windowFactory())
 .then(()=>registerIPC())
 
+
 function windowFactory() {
   // uiWindow contains the react app
   uiWindow = createUIWindow()
@@ -69,7 +70,6 @@ function registerIPC() {
     console.log('main-csv-loaded')
   })
 
-
   // uiwindow --> main process --> importerWindow
     // settings and csv data are passed to the importer
   ipcMain.on('import-to-segment', (event, data) => {
@@ -94,8 +94,19 @@ function registerIPC() {
 
   ipcMain.on('import-error', (event, error)=>{
     uiWindow.webContents.send('import-error', error)
-    console.log('import-error')
+    console.log('main-import-error')
   })
+
+  ipcMain.on('load-history', (event, data)=>{
+    importerWindow.webContents.send('load-history', data)
+    console.log('main-load-history')
+  })
+
+  ipcMain.on('history-loaded', (event, data)=>{
+    uiWindow.webContents.send('history-loaded', data)
+    console.log('main-history-loaded')
+  }
+)
 
 }
 

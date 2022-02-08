@@ -12,7 +12,8 @@ contextBridge.exposeInMainWorld(
             let validChannels = [
               "load-csv",
               "import-to-segment",
-              "update-event-preview"
+              "update-event-preview",
+              "load-history"
             ];
             if (validChannels.includes(channel)) {
                 ipcRenderer.send(channel, data);
@@ -23,7 +24,8 @@ contextBridge.exposeInMainWorld(
               "csv-loaded",
               "event-preview-updated",
               "import-complete",
-              "import-error"
+              "import-error",
+              "history-loaded"
             ];
             if (validChannels.includes(channel)) {
                 // Deliberately strip event as it includes `sender`
@@ -31,7 +33,7 @@ contextBridge.exposeInMainWorld(
             }
         },
         removeAllListeners: (channel, func) => {
-          let validChannels = ["csv-loaded", "event-preview-updated", "import-complete", "import-error"];
+          let validChannels = ["csv-loaded", "event-preview-updated", "import-complete", "import-error", "history-loaded"];
           if (validChannels.includes(channel)) {
             ipcRenderer.removeAllListeners(channel)
           }
