@@ -1,6 +1,6 @@
 const sqlite3 = require('better-sqlite3')
 
-const dbPath = './public/sqlite/importerV1.db'
+const dbPath = './sqlite/importerV1.db'
 
 exports.insertImportRecord = (values, path) => {
   if (!path) {
