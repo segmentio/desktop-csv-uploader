@@ -23,7 +23,6 @@
     "chai-spies": "^1.0.0",
     "csv-parser": "^3.0.0",
     "electron": "^16.0.5",
-    "electron-mocha": "^11.0.2",
     "electron-rebuild": "^3.2.7",
     "electron-reloader": "^1.2.1",
     "evergreen-ui": "^6.6.3",
@@ -45,7 +44,8 @@
     "test": "electron-mocha --inspect",
     "eject": "react-scripts eject",
     "electron-dev": "electron .",
-    "migrate": "node migrate"
+    "migrate": "node migrate",
+    "rebuild": "electron-rebuild"
   },
   "eslintConfig": {
     "extends": [
@@ -66,6 +66,7 @@
     ]
   },
   "devDependencies": {
+    "electron-mocha": "^11.0.2",
     "webpack-dev-server": "^4.7.3"
   }
 }
