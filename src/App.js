@@ -47,7 +47,9 @@ function App() {
           <ViewWrapper
           csvData={csvData}
           eventSelection={eventSelection}
+          setEventSelection={setEventSelection}
           eventIsSelected={eventIsSelected}
+          setEventIsSelected={setEventIsSelected}
           menuSelection={menuSelection}/>
         </Pane>
     </div>
