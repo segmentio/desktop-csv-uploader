@@ -1,13 +1,18 @@
 import {ipcRenderer} from 'electron';
 import * as fs from 'fs';
+import Writable from 'stream'
 import CsvParser from 'csv-parser';
 import Analytics from 'analytics-node';
 import {insertImportRecord, getAllImports} from './utils/dbQueries'
 
 // manual test write key HPzXrG6JTe3kf4a8McAo1eM8TGQnkm3e
 
+interface UpdateData {
+  config:ImportConfig,
+  csvData:Array<SpecObject>
+}
 interface ImportConfig {
-    csvData:Array<object>,
+    filePath:string,
     userIdField: string,
     anonymousIdField: string,
     timestampField: string,
@@ -35,7 +40,8 @@ interface SortedTransformations {
   ignoreRow:{}
 }
 
-interface Properties {
+// SpecObject is an object that conforms to the Segment Spec types
+interface SpecObject {
   [index:string]:string|number|Date|boolean|object
 }
 
@@ -43,64 +49,74 @@ interface TrackEvent {
   event:string,
   userId?:string,
   anonymousId?:string,
-  timestamp:Date,
-  properties:Properties
+  timestamp?:string, // string is converted during the event formatting process
+  properties?:SpecObject
 }
 
 interface IdentifyEvent{
-  event:string,
   userId?:string,
   anonymousId?:string,
-  timestamp:Date,
-  traits:Properties
+  timestamp?:string, // string is converted during the event formatting process
+  traits?:SpecObject
 }
 
 interface Events {
-    track:TrackEvent,
-    identify:IdentifyEvent
+    track?:TrackEvent,
+    identify?:IdentifyEvent
 }
 
 // IPC listeners
-ipcRenderer.on('load-csv', (_, filePath:string) => {
-  let csvResults:Array<object> = []
-  fs.createReadStream(filePath)
-    .pipe(CsvParser({separator:'|'}))
-    .on('data', (data:any) => csvResults.push(data))
-    .on('end', () => {
-      console.log('end');
-      ipcRenderer.send('csv-loaded', csvResults)
-    })
-    .on('error', (err:Error) => console.log(err))
-    console.log('csv-loaded-test')
+ipcRenderer.on('load-csv', (_, filePath) => {
+  let csvResults:Array<SpecObject> = []
+  const stream = CSVStream(filePath, {linesNeeded:10})
+  stream.on('data', (data:SpecObject)=>{ csvResults.push(data)})
+  stream.on('close', ()=>ipcRenderer.send('csv-loaded', csvResults))
 })
 
+function CSVStream(filePath:string, options?:{linesNeeded:number}):Writable{
+  const csvStream = fs.createReadStream(filePath).pipe(CsvParser({separator:'|'})) // pipe converts read streams into writable streams
+  let lineCounter = 0
+  csvStream.on('data', ()=>{
+    lineCounter++
+    if (options != undefined && lineCounter == options.linesNeeded) {
+      csvStream.destroy()
+    }
+  })
+  return csvStream
+}
 
 ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
   try {
     const analytics = new Analytics(config.writeKey)
+    const stream = CSVStream(config.filePath)
+    const transformations = sortTransformations(config.transformationList)
+
     if (!config.eventTypes.track && !config.eventTypes.identify){
       throw new Error("No event types selected")
     }
-    const transformations = sortTransformations(config.transformationList)
-    for (let i=0; i<config.csvData.length; i++) {
-        const events:Events = formatSegmentCalls(config.csvData[i], config, transformations)
-        try {
-          if (events.track){
-            analytics.track(events.track)
-          }
-          if (events.identify){
-            analytics.identify(events.identify)
-          }
-        } catch {
-          (error:Error)=> {
-            error.message = error.message + ' This error occurred on line: ' + i
-            throw error
-        }}
-      }
-      ipcRenderer.send('import-complete', config.csvData.length)
-      const values = {config:JSON.stringify(config), size:config.csvData.length}
+
+    stream.on('data', (row)=>{
+      const events:Events = formatSegmentCalls(row, config, transformations)
+
+      try {
+        if (events.track){
+          analytics.track(events.track)
+        }
+        if (events.identify){
+          analytics.identify(events.identify)
+        }
+      } catch {
+        (error:Error)=> {
+          error.message = error.message + ' This error occurred on line: '
+          throw error
+      }}
+
+    })
+
+    stream.on('close', ()=>ipcRenderer.send('import-complete', config))
+
+      const values = {config:JSON.stringify(config)}
       insertImportRecord(values)
-      console.log(values)
       console.log('importer-importing-to-segment')
   } catch {
     (error:Error)=>{
@@ -110,11 +126,11 @@ ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
 })
 
 
-function formatSegmentCalls(csvRow:Properties, config:ImportConfig, transformations:SortedTransformations):Events {
-  let formattedEvents:Events
+function formatSegmentCalls(csvRow:SpecObject, config:ImportConfig, transformations:SortedTransformations):Events {
+  let formattedEvents:Events = {}
   let sendTrack = false
   let sendIdentify = false
-  // decide what calls to send in
+
   if (config.eventTypes['track']) { //need to implement an ignore row transform here
     sendTrack = true
   }
@@ -123,44 +139,33 @@ function formatSegmentCalls(csvRow:Properties, config:ImportConfig, transformati
     sendIdentify = true
   }
 
-  const allFields = Object.keys(config.csvData[0])
+  const allFields = Object.keys(csvRow)
   const {eventField, anonymousIdField, userIdField, timestampField, ...rest } = config
   const fieldsToIgnore:Array<string> = [eventField, anonymousIdField, userIdField, timestampField]
 
   if (sendTrack){
-    let trackFieldsToIgnoreArray = fieldsToIgnore.concat(transformations.ignoreColumn.trackEvents, transformations.ignoreColumn.allEvents)
-    const propFields = distillFields(trackFieldsToIgnoreArray, allFields)
-    const topLevelTrackFields = {
-      event:eventField,
-      anonymousId:anonymousIdField,
-      userId:userIdField,
-      timestamp:timestampField
-    }
-    const trackEvent = formatTrackEvent(csvRow, topLevelTrackFields, propFields)
-    formattedEvents['track'] = trackEvent
+    let trackFieldsToIgnore = fieldsToIgnore.concat(transformations.ignoreColumn.trackEvents, transformations.ignoreColumn.allEvents)
+    const propFields = distillFields(trackFieldsToIgnore, allFields)
+    const trackEvent = formatTrackEvent(csvRow, config, propFields)
+    formattedEvents.track = trackEvent
   }
 
   if (sendIdentify){
-    var identifyFieldsToIgnoreArray = fieldsToIgnore + transformations['Ignore Column']['Identify Events'] + transformations['Ignore Column']['All Events']
-    const traitFields = distillFields(identifyFieldsToIgnoreArray, allFields)
-    const topLevelIdentifyFields = {
-      anonymousId:anonymousIdField,
-      userId:userIdField,
-      timestamp:timestampField
-    }
-    identifyEvent = formatIdentifyEvent(csvRow, topLevelIdentifyFields, traitFields)
-    formattedEvents['identify'] = identifyEvent
+    var identifyFieldsToIgnore = fieldsToIgnore.concat(transformations.ignoreColumn.identifyEvents, transformations.ignoreColumn.allEvents)
+    const traitFields = distillFields(identifyFieldsToIgnore, allFields)
+    const identifyEvent = formatIdentifyEvent(csvRow, config, traitFields)
+    formattedEvents.identify = identifyEvent
   }
   return formattedEvents
 }
 
 
-ipcRenderer.on('update-event-preview', (_,config:ImportConfig) => {
-  const transformations = sortTransformations(config.transformationList)
+ipcRenderer.on('update-event-preview', (_, updateData:UpdateData) => {
+  const transformations = sortTransformations(updateData.config.transformationList)
   let previewEvents = []
-  for (let i=0; i<config.csvData.length; i++) {
-    if (config.eventTypes['track']) {
-      const events = formatSegmentCalls(config.csvData[i], config, transformations)
+  for (let i=0; i<updateData.csvData.length; i++) {
+    if (updateData.config.eventTypes['track']) {
+      const events = formatSegmentCalls(updateData.csvData[i], updateData.config, transformations)
       previewEvents.push(events)
     }
   }
@@ -173,40 +178,43 @@ ipcRenderer.on('load-history', ()=>{
   ipcRenderer.send('history-loaded', history)
 })
 
-function formatTrackEvent(csvRow:Properties, topLevelFields:Properties, propFields:Array<string>) {
-
-  let properties:Properties = {}
+function formatTrackEvent(csvRow:SpecObject, config:ImportConfig, propFields:Array<string>):TrackEvent {
+  // csvRow is the chunk of csv data (js object) coming from the read csvStream
+  // topLevelFields are the fields that
+  let properties:SpecObject = {}
   propFields.map( (field:string) => {properties[field] = csvRow[field]} )
 
-  let trackEvent:TrackEvent
-  if (topLevelFields.event){
-    trackEvent.event = csvRow[topLevelFields.event]
+  let topLevelData:SpecObject = {}
+
+  if (config.eventField){
+    topLevelData.event = csvRow[config.eventField]
   }
 
-  if (topLevelFields.userId){
-    topLevelData['userId'] = csvRow[topLevelFields.userId]
+  if (config.userIdField){
+    topLevelData.userId = csvRow[config.userIdField]
   }
 
-  if (topLevelFields.anonymousId){
-    topLevelData['anonymousId'] = csvRow[topLevelFields.anonymousId]
+  if (config.anonymousIdField){
+    topLevelData.anonymousId = csvRow[config.anonymousIdField]
   }
 
-  if (topLevelFields.timestamp){
-    topLevelData['timestamp'] = new Date(csvRow[topLevelFields.timestamp])
+  if (config.timestampField && csvRow[config.timestampField]){
+    try{
+      topLevelData.timestamp = new Date(csvRow[config.timestampField])
+    }
   }
 
-  return trackEvent
-  // return({
-  //   ...topLevelData,
-  //   properties: properties,
-  // })
+  return({
+    ...topLevelData,
+    properties:properties
+  })
 }
 
-function formatIdentifyEvent(csvRow:Properties, topLevelFields:Properties, propFields:Array<string>) {
-  let traits:Properties = {}
+function formatIdentifyEvent(csvRow:SpecObject, topLevelFields:SpecObject, propFields:Array<string>):IdentifyEvent {
+  let traits:SpecObject = {}
   propFields.map( (field:string) => {traits[field] = csvRow[field]} )
 
-  let topLevelData = {}
+  let topLevelData:SpecObject = {}
 
   if (topLevelFields.userId){
     topLevelData['userId'] = csvRow[topLevelFields.userId]
