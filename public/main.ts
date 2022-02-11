@@ -20,7 +20,7 @@ function windowFactory() {
 
   // Hidden Render Process that handles the data intensive importing tasks
   importerWindow = createImporterWindow()
-  importerWindow.loadFile('public/importer_window.html')
+  importerWindow.loadFile('templates/importer_window.html')
   importerWindow.webContents.openDevTools()
 }
 
@@ -32,7 +32,6 @@ function createUIWindow() {
       webPreferences: {
         nodeIntegration: false, // default, but explicit for securty
         contextIsolation: true, // protect against prototype pollution
-        enableRemoteModule: false, // turn off remote, for security
         preload: path.join(__dirname, 'preload.js') // preload script to expose ipcRenderer in Browser window, necessary since nodeintegration == false
       }
     })

@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import Writable from 'stream'
 import CsvParser from 'csv-parser';
 import Analytics from 'analytics-node';
-import {insertImportRecord, getAllImports} from './utils/dbQueries'
+import {insertImportRecord, getAllImports} from './utils/dbQueries';
 
 // manual test write key HPzXrG6JTe3kf4a8McAo1eM8TGQnkm3e
 

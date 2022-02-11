@@ -41,25 +41,31 @@ const dbQueries_1 = require("./utils/dbQueries");
 // IPC listeners
 electron_1.ipcRenderer.on('load-csv', (_, filePath) => {
     let csvResults = [];
-    fs.createReadStream(filePath)
-        .pipe((0, csv_parser_1.default)({ separator: '|' }))
-        .on('data', (data) => csvResults.push(data))
-        .on('end', () => {
-        console.log('end');
-        electron_1.ipcRenderer.send('csv-loaded', csvResults);
-    })
-        .on('error', (err) => console.log(err));
-    console.log('csv-loaded-test');
+    const stream = CSVStream(filePath, { linesNeeded: 10 });
+    stream.on('data', (data) => { csvResults.push(data); });
+    stream.on('close', () => electron_1.ipcRenderer.send('csv-loaded', csvResults));
 });
+function CSVStream(filePath, options) {
+    const csvStream = fs.createReadStream(filePath).pipe((0, csv_parser_1.default)({ separator: '|' })); // pipe converts read streams into writable streams
+    let lineCounter = 0;
+    csvStream.on('data', () => {
+        lineCounter++;
+        if (options != undefined && lineCounter == options.linesNeeded) {
+            csvStream.destroy();
+        }
+    });
+    return csvStream;
+}
 electron_1.ipcRenderer.on('import-to-segment', (_, config) => {
     try {
         const analytics = new analytics_node_1.default(config.writeKey);
+        const stream = CSVStream(config.filePath);
+        const transformations = sortTransformations(config.transformationList);
         if (!config.eventTypes.track && !config.eventTypes.identify) {
             throw new Error("No event types selected");
         }
-        const transformations = sortTransformations(config.transformationList);
-        for (let i = 0; i < config.csvData.length; i++) {
-            const events = formatSegmentCalls(config.csvData[i], config, transformations);
+        stream.on('data', (row) => {
+            const events = formatSegmentCalls(row, config, transformations);
             try {
                 if (events.track) {
                     analytics.track(events.track);
@@ -70,30 +76,31 @@ electron_1.ipcRenderer.on('import-to-segment', (_, config) => {
             }
             catch (_a) {
                 (error) => {
-                    error.message = error.message + ' This error occurred on line: ' + i;
+                    error.message = error.message + ' This error occurred on line: ';
                     throw error;
                 };
             }
-        }
-        electron_1.ipcRenderer.send('import-complete', config.csvData.length);
-        const values = { config: JSON.stringify(config), size: config.csvData.length };
-        (0, dbQueries_1.insertImportRecord)(values);
-        console.log(values);
-        console.log('importer-importing-to-segment');
+        });
+        stream.on('close', () => {
+            electron_1.ipcRenderer.send('import-complete', config);
+            const values = { config: JSON.stringify(config) };
+            (0, dbQueries_1.insertImportRecord)(values);
+            console.log('importer-importing-to-segment');
+        });
     }
-    catch (_b) {
+    catch (_a) {
         (error) => {
             console.log(error);
             electron_1.ipcRenderer.send('import-error', error.message);
         };
     }
 });
-electron_1.ipcRenderer.on('update-event-preview', (_, config) => {
-    const transformations = sortTransformations(config.transformationList);
+electron_1.ipcRenderer.on('update-event-preview', (_, updateData) => {
+    const transformations = sortTransformations(updateData.config.transformationList);
     let previewEvents = [];
-    for (let i = 0; i < config.csvData.length; i++) {
-        if (config.eventTypes['track']) {
-            const events = formatSegmentCalls(config.csvData[i], config, transformations);
+    for (let i = 0; i < updateData.csvData.length; i++) {
+        if (updateData.config.eventTypes['track']) {
+            const events = formatSegmentCalls(updateData.csvData[i], updateData.config, transformations);
             previewEvents.push(events);
         }
     }
@@ -104,52 +111,93 @@ electron_1.ipcRenderer.on('load-history', () => {
     console.log(history);
     electron_1.ipcRenderer.send('history-loaded', history);
 });
-function formatTrackEvent(csvRow, topLevelFields, propFields) {
+function formatSegmentCalls(csvRow, config, transformations) {
+    let formattedEvents = {};
+    let sendTrack = false;
+    let sendIdentify = false;
+    if (config.eventTypes.track) { //need to implement an ignore row transform here
+        sendTrack = true;
+    }
+    if (config.eventTypes.identify) { //need to implement an ignore row transform here
+        sendIdentify = true;
+    }
+    const allFields = Object.keys(csvRow);
+    const { eventField, anonymousIdField, userIdField, timestampField } = config, rest = __rest(config, ["eventField", "anonymousIdField", "userIdField", "timestampField"]);
+    const fieldsToIgnore = [eventField, anonymousIdField, userIdField, timestampField];
+    if (sendTrack) {
+        let trackFieldsToIgnore = fieldsToIgnore.concat(transformations.ignoreColumn.trackEvents, transformations.ignoreColumn.allEvents);
+        const propFields = distillFields(trackFieldsToIgnore, allFields);
+        const trackEvent = formatTrackEvent(csvRow, config, propFields);
+        formattedEvents.track = trackEvent;
+    }
+    if (sendIdentify) {
+        var identifyFieldsToIgnore = fieldsToIgnore.concat(transformations.ignoreColumn.identifyEvents, transformations.ignoreColumn.allEvents);
+        const traitFields = distillFields(identifyFieldsToIgnore, allFields);
+        const identifyEvent = formatIdentifyEvent(csvRow, config, traitFields);
+        formattedEvents.identify = identifyEvent;
+    }
+    return formattedEvents;
+}
+function formatTrackEvent(csvRow, config, propFields) {
+    // csvRow is the chunk of csv data (js object) coming from the read csvStream
+    // topLevelFields are the fields that
     let properties = {};
-    propFields.map((field) => { [properties][field] = csvRow[field]; });
-    let topLevelData = {};
-    if (topLevelFields.event) {
-        topLevelData['event'] = csvRow[topLevelFields.event];
+    propFields.map((field) => { properties[field] = csvRow[field]; });
+    let topLevelData = { event: csvRow[config.eventField] };
+    if (config.userIdField) {
+        topLevelData.userId = csvRow[config.userIdField];
     }
-    if (topLevelFields.userId) {
-        topLevelData['userId'] = csvRow[topLevelFields.userId];
+    if (config.anonymousIdField) {
+        topLevelData.anonymousId = csvRow[config.anonymousIdField];
     }
-    if (topLevelFields.anonymousId) {
-        topLevelData['anonymousId'] = csvRow[topLevelFields.anonymousId];
+    if (config.timestampField) {
+        if (isTimeStampable(csvRow[config.timestampField])) {
+            topLevelData.timestamp = new Date(csvRow[config.timestampField]);
+        }
     }
-    if (topLevelFields.timestamp) {
-        topLevelData['timestamp'] = new Date(csvRow[topLevelFields.timestamp]);
+    function isTimeStampable(value) {
+        return value !== undefined;
     }
     return (Object.assign(Object.assign({}, topLevelData), { properties: properties }));
 }
-function formatIdentifyEvent(csvRow, topLevelFields, propFields) {
+function formatIdentifyEvent(csvRow, config, propFields) {
     let traits = {};
     propFields.map((field) => { traits[field] = csvRow[field]; });
     let topLevelData = {};
-    if (topLevelFields.userId) {
-        topLevelData['userId'] = csvRow[topLevelFields.userId];
+    if (config.userIdField) {
+        topLevelData.userId = csvRow[config.userIdField];
     }
-    if (topLevelFields.anonymousId) {
-        topLevelData['anonymousId'] = csvRow[topLevelFields.anonymousId];
+    if (config.anonymousIdField) {
+        topLevelData.anonymousId = csvRow[config.anonymousIdField];
     }
-    if (topLevelFields.timestamp) {
-        topLevelData['timestamp'] = new Date(csvRow[topLevelFields.timestamp]);
+    if (config.timestampField) {
+        try {
+            topLevelData.timestamp = new Date(csvRow[config.timestampField]);
+        }
+        catch (_a) {
+            (error) => { throw error; };
+        }
     }
     return (Object.assign(Object.assign({}, topLevelData), { traits: traits }));
 }
-function distillFields(fieldsToIgnoreArray, fieldsArray) {
-    //super slow since each field gets deleted, but its only done once before then beginning of the import loop
-    // TODO explore how we can ignore the irrelevant fields better
+function distillFields(fieldsToIgnore, fields) {
     let propFields = [];
-    for (const field of fieldsArray) {
-        if (!fieldsToIgnoreArray.includes(field)) {
+    for (const field of fields) {
+        if (!fieldsToIgnore.includes(field)) {
             propFields.push(field);
         }
     }
     return propFields;
 }
 function sortTransformations(transformations) {
-    let sorted;
+    let sorted = {
+        ignoreColumn: {
+            trackEvents: [],
+            identifyEvents: [],
+            allEvents: []
+        },
+        ignoreRow: {}
+    };
     for (const transformation of transformations) {
         switch (transformation.type) {
             case 'Ignore Column':
@@ -173,44 +221,3 @@ function sortTransformations(transformations) {
     }
     return sorted;
 }
-function formatSegmentCalls(csvRow, config, transformations) {
-    const formattedEvents = {};
-    let sendTrack = false;
-    let sendIdentify = false;
-    // decide what calls to send in
-    if (config.eventTypes['track']) { //need to implement an ignore row transform here
-        sendTrack = true;
-    }
-    if (config.eventTypes['identify']) { //need to implement an ignore row transform here
-        sendIdentify = true;
-    }
-    const allFields = Object.keys(config.csvData[0]);
-    const { eventField, anonymousIdField, userIdField, timestampField } = config, rest = __rest(config, ["eventField", "anonymousIdField", "userIdField", "timestampField"]);
-    const fieldsToIgnore = [eventField, anonymousIdField, userIdField, timestampField];
-    if (sendTrack) {
-        var trackFieldsToIgnoreArray = fieldsToIgnore + transformations['Ignore Column']['Track Events'] + transformations['Ignore Column']['All Events'];
-        const propFields = distillFields(trackFieldsToIgnoreArray, allFields);
-        const topLevelTrackFields = {
-            event: eventField,
-            anonymousId: anonymousIdField,
-            userId: userIdField,
-            timestamp: timestampField
-        };
-        trackEvent = formatTrackEvent(csvRow, topLevelTrackFields, propFields);
-        formattedEvents['track'] = trackEvent;
-    }
-    if (sendIdentify) {
-        var identifyFieldsToIgnoreArray = fieldsToIgnore + transformations['Ignore Column']['Identify Events'] + transformations['Ignore Column']['All Events'];
-        const traitFields = distillFields(identifyFieldsToIgnoreArray, allFields);
-        const topLevelIdentifyFields = {
-            anonymousId: anonymousIdField,
-            userId: userIdField,
-            timestamp: timestampField
-        };
-        identifyEvent = formatIdentifyEvent(csvRow, topLevelIdentifyFields, traitFields);
-        formattedEvents['identify'] = identifyEvent;
-    }
-    return formattedEvents;
-}
-//learnings:
-//need to parse the transformations upfront
