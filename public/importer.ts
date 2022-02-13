@@ -53,13 +53,6 @@ interface TrackEvent {
   timestamp?:any, // string is converted during the event formatting process
   properties?:SpecObject
 }
-interface IdentifiedTrackEvent {
-  event:string,
-  userId:string,
-  anonymousId?:string,
-  timestamp?:any, // string is converted during the event formatting process
-  properties?:SpecObject
-}
 
 interface IdentifyEvent{
   userId?:string,
