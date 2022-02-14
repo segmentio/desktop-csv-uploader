@@ -3,27 +3,10 @@ import * as fs from 'fs';
 import Writable from 'stream'
 import CsvParser from 'csv-parser';
 import Analytics from 'analytics-node';
-import {insertImportRecord, getAllImports} from './utils/dbQueries';
-
+//@ts-ignore
+import {insertImportRecord, getAllImports} from '../dist/utils/dbQueries';
+import {ImportConfig, UpdateData, SpecObject} from './types';
 // manual test write key HPzXrG6JTe3kf4a8McAo1eM8TGQnkm3e
-
-interface UpdateData {
-  config:ImportConfig,
-  csvData:Array<SpecObject>
-}
-interface ImportConfig {
-    filePath:string,
-    userIdField: string,
-    anonymousIdField: string,
-    timestampField: string,
-    eventField: string,
-    writeKey: string,
-    eventTypes: {
-      track: string,
-      identify: string
-    },
-    transformationList:Array<Transformation>
-}
 
 type TimeStampable = string|number|Date
 
@@ -40,10 +23,6 @@ interface SortedTransformations {
     allEvents:Array<string|never>
   },
   ignoreRow:{}
-}
-
-interface SpecObject {
-  [index:string]:any
 }
 
 interface TrackEvent {
@@ -186,7 +165,7 @@ function formatTrackEvent(csvRow:SpecObject, config:ImportConfig, propFields:Arr
   let properties:SpecObject = {}
   propFields.map( (field:string) => {properties[field] = csvRow[field]} )
 
-  let topLevelData:TrackEvent = {event:csvRow[config.eventField]}
+  let topLevelData:TrackEvent = {event: csvRow[config.eventField]}
 
   if (config.userIdField){
     topLevelData.userId = csvRow[config.userIdField]

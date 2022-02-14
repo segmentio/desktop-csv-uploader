@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = require("path");
+console.log(__dirname);
 let uiWindow;
 let importerWindow;
 // This method will be called when Electron has finished
@@ -13,11 +14,11 @@ electron_1.app.whenReady()
 function windowFactory() {
     // uiWindow contains the react app
     uiWindow = createUIWindow();
-    uiWindow.loadURL('http://localhost:3000');
+    uiWindow.loadURL('http://localhost:8080');
     uiWindow.webContents.openDevTools();
     // Hidden Render Process that handles the data intensive importing tasks
     importerWindow = createImporterWindow();
-    importerWindow.loadFile('templates/importer_window.html');
+    importerWindow.loadFile('templates/importerWindow.html');
     importerWindow.webContents.openDevTools();
 }
 function createUIWindow() {

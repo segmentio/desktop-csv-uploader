@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import {v4 as uuidv4} from 'uuid';
 import CodeMirror from '@uiw/react-codemirror';
 import {json} from '@codemirror/lang-json';
 import {
@@ -16,16 +15,11 @@ import {
   TextInputField,
   Switch,
   FilePicker,
-  IconButton,
   majorScale,
-  TrashIcon,
   toaster,
-  Tooltip,
-  Paragraph,
-  InfoSignIcon
 } from 'evergreen-ui';
 
-
+import {ImportConfig, UpdateData} from '../types'
 
 function App() {
   const [csvData, setCSVData] = useState(null)
@@ -34,7 +28,7 @@ function App() {
   const [menuSelection, setMenuSelection] = useState('Importer')
 
   useEffect( () => {
-    window.api.on("csv-loaded", (data) => {setCSVData(data)})
+    window.api.on("csv-loaded", (data:UpdateData) => {setCSVData(data.csvData)})
     return () => window.api.removeAllListeners("csv-loaded");
   }
 )
@@ -47,7 +41,9 @@ function App() {
           <ViewWrapper
           csvData={csvData}
           eventSelection={eventSelection}
+          setEventSelection={setEventSelection}
           eventIsSelected={eventIsSelected}
+          setEventIsSelected={setEventIsSelected}
           menuSelection={menuSelection}/>
         </Pane>
     </div>
@@ -177,7 +173,7 @@ function CSVWorkspace(props){
 }
 
 
-function History(props) {
+function History() {
   const [history, setHistory] = useState(null)
 
   useEffect( ()=>{
@@ -277,7 +273,7 @@ function CSVTable (props){
       </Table>
       </Pane>
       </Pane>
-)
+    )
   }
 }
 
@@ -322,17 +318,17 @@ function EventPreview(props) {
 
 function Configuration(props) {
 
-  const [userIDField, setUserIDField] = useState(null)
-  const [anonymousIDField, setAnonymousIDField] = useState(null)
-  const [timestampField, setTimestampField] = useState(null)
-  const [eventNameField, setEventNameField] = useState(null)
-  const [writeKey, setWriteKey] = useState(null)
+  const [userIDField, setUserIDField] = useState('')
+  const [anonymousIDField, setAnonymousIDField] = useState('')
+  const [timestampField, setTimestampField] = useState('')
+  const [eventNameField, setEventNameField] = useState('')
+  const [writeKey, setWriteKey] = useState('')
   const [hasTrack, setHasTrack] = useState(false)
   const [hasIdentify, setHasIdentify] = useState(false)
   const [transformationList, setTransformationList] = useState([])
 
-  const data = {
-    csvData:props.csvData,
+  const data:ImportConfig = {
+    filePath:props.csvData,
     userIdField: userIDField,
     anonymousIdField: anonymousIDField,
     timestampField: timestampField,
@@ -531,7 +527,6 @@ function TransformationDisplay(props){
     </StatefulRow>
   )
 }
-
 
 function AddTransformation(props){
   const [addTransformation, setAddTransformation] = useState(false)

@@ -45,11 +45,11 @@
     "webpack-dev-server": "^4.7.3"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "tsc -p tsconfig.json",
+    "start-react": "webpack serve",
+    "start-electron": "electron .",
+    "build": "tsc -p tsconfig.json && webpack --mode=development",
     "test": "electron-mocha --inspect",
     "eject": "react-scripts eject",
-    "electron-dev": "electron .",
     "migrate": "node migrate"
   },
   "eslintConfig": {

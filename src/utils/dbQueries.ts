@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 
 const dbPath = './sqlite/importerV1.db'
 
-function insertImportRecord(values:object, path?:string):void {
+export function insertImportRecord(values:object, path?:string):void {
     if (!path) {
     path = dbPath
   }
@@ -12,7 +12,7 @@ function insertImportRecord(values:object, path?:string):void {
     db.close()
 }
 
-function getAllImports(path?:string):Array<object>{
+export function getAllImports(path?:string):Array<object>{
       if (!path) {
       path = dbPath
     }
@@ -21,5 +21,3 @@ function getAllImports(path?:string):Array<object>{
     db.close()
     return history
 }
-
-export {insertImportRecord, getAllImports}

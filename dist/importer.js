@@ -37,7 +37,8 @@ const electron_1 = require("electron");
 const fs = __importStar(require("fs"));
 const csv_parser_1 = __importDefault(require("csv-parser"));
 const analytics_node_1 = __importDefault(require("analytics-node"));
-const dbQueries_1 = require("./utils/dbQueries");
+//@ts-ignore
+const dbQueries_1 = require("../dist/utils/dbQueries");
 // IPC listeners
 electron_1.ipcRenderer.on('load-csv', (_, filePath) => {
     let csvResults = [];

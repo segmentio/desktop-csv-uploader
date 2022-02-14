@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path = require('path');
 
+console.log(__dirname)
+
 let uiWindow:BrowserWindow
 let importerWindow:BrowserWindow
 
@@ -15,12 +17,12 @@ app.whenReady()
 function windowFactory() {
   // uiWindow contains the react app
   uiWindow = createUIWindow()
-  uiWindow.loadURL('http://localhost:3000');
+  uiWindow.loadURL('http://localhost:8080');
   uiWindow.webContents.openDevTools()
 
   // Hidden Render Process that handles the data intensive importing tasks
   importerWindow = createImporterWindow()
-  importerWindow.loadFile('templates/importer_window.html')
+  importerWindow.loadFile('templates/importerWindow.html')
   importerWindow.webContents.openDevTools()
 }
 
