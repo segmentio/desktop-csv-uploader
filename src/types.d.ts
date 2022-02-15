@@ -19,3 +19,6 @@ export interface ImportConfig {
 export interface SpecObject{
     [index:string]:any
 }
+
+export interface History{
+}

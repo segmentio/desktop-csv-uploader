@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import {json} from '@codemirror/lang-json';
+import {v4 as uuidv4} from 'uuid'
 import {
   Pane,
   Menu,
@@ -19,13 +20,25 @@ import {
   toaster,
 } from 'evergreen-ui';
 
-import {ImportConfig, UpdateData} from '../types'
+import {ImportConfig, UpdateData, SpecObject} from '../types'
+
+declare global{
+  interface Window{
+    api: {
+      send: (channel: string, ...arg: any) => void;
+      on: (channel: string, func: (event: any, ...arg: any) => void) => void;
+      removeAllListeners: (channel:string, func?: (event:any, ...arg:any)=> void) => void;
+    }
+  }
+}
+
+
 
 function App() {
-  const [csvData, setCSVData] = useState(null)
-  const [eventSelection, setEventSelection] = useState(null)
-  const [eventIsSelected, setEventIsSelected] = useState(false)
-  const [menuSelection, setMenuSelection] = useState('Importer')
+  const [csvData, setCSVData] = useState<UpdateData["csvData"] | null>(null)
+  const [eventSelection, setEventSelection] = useState<number>(0)
+  const [eventIsSelected, setEventIsSelected] = useState<boolean>(false)
+  const [menuSelection, setMenuSelection] = useState<'Importer'|'History'>('Importer')
 
   useEffect( () => {
     window.api.on("csv-loaded", (data:UpdateData) => {setCSVData(data.csvData)})
@@ -51,7 +64,9 @@ function App() {
 }
 export default App;
 
-function CustomMenu(props){
+export interface CustomMenuProps {
+  setMenuSelection:React.Dispatch<React.SetStateAction<'Importer'|'History'>>}
+function CustomMenu(props:CustomMenuProps){
     return (
       <Menu>
         <Menu.Group>
@@ -75,7 +90,7 @@ function CustomMenu(props){
     );
 }
 
-function ViewWrapper(props){
+function ViewWrapper(props:CSVWorkspaceProps){
   if (props.menuSelection == 'Importer') {
     return(
       <CSVWorkspace
@@ -90,25 +105,32 @@ function ViewWrapper(props){
     return(
       <History/>
     )
-  }
+  } else{ return null}
 }
-
-function CSVWorkspace(props){
-  const [previewedEvents, setPreviewedEvents] = useState([])
+export interface CSVWorkspaceProps{
+  csvData:SpecObject | null,
+  eventSelection:number,
+  setEventSelection: React.Dispatch<React.SetStateAction<number>>,
+  eventIsSelected:boolean,
+  setEventIsSelected: React.Dispatch<React.SetStateAction<boolean>>,
+  menuSelection?: 'Importer'|'History'}
+function CSVWorkspace(props:CSVWorkspaceProps){
+  const [previewedEvents, setPreviewedEvents] = useState<UpdateData|null>(null)
   const [importComplete, setImportComplete] = useState(false)
+  const [filePath, setFilePath] = useState<string>('')
 
   useEffect(()=>{
-    window.api.on('event-preview-updated', (data) => {
+    window.api.on('event-preview-updated', (data:UpdateData) => {
       setPreviewedEvents(data)
       console.log('event-preview-updated')
     });
 
-    window.api.on('import-complete', (count)=> {
+    window.api.on('import-complete', (count:number)=> {
       toaster.success('Import Successful!', {description:'Check the source debugger in your Segment workspace!'})
       console.log('import-complete')
     });
 
-    window.api.on('import-error', (error)=> {
+    window.api.on('import-error', (error:string)=> {
       console.log(error)
       toaster.danger('Oops Something went wrong... ', {description:error})
       console.log('import-error')
@@ -134,7 +156,7 @@ function CSVWorkspace(props){
           setEventSelection={props.setEventSelection}
           setEventIsSelected={props.setEventIsSelected}/>
           <EventPreview
-          csvData={previewedEvents.length > 0 ? previewedEvents : props.csvData}
+          csvData={previewedEvents == null ? props.csvData :previewedEvents}
           eventSelection={props.eventSelection}
           eventIsSelected={props.eventIsSelected}
           setEventIsSelected={props.setEventIsSelected}
@@ -144,7 +166,7 @@ function CSVWorkspace(props){
         marginX={majorScale(4)}>
           <Configuration
           columnNames={Object.keys(props.csvData[0])}
-          csvData={props.csvData}
+          filePath={filePath}
           />
         </Pane>
       </Pane>
@@ -165,6 +187,7 @@ function CSVWorkspace(props){
         onChange={filePath => {
           console.log("load-csv", filePath)
           window.api.send("load-csv", filePath[0].path)
+          setFilePath(filePath[0].path)
           }}
         />
       </Pane>
@@ -174,7 +197,7 @@ function CSVWorkspace(props){
 
 
 function History() {
-  const [history, setHistory] = useState(null)
+  const [history, setHistory] = useState<Array<object>|null>(null)
 
   useEffect( ()=>{
     window.api.send('load-history', null);
@@ -207,13 +230,13 @@ function History() {
             </Table.TextHeaderCell>
         </Table.Head>
         <Table.Body height={240}>
-  {history.map((row) => (
+  {history.map((row:any) => (
     <Table.Row key={row} isSelectable>
       <Table.TextCell>{row.size}</Table.TextCell>
       <Table.TextCell isNumber>{row.success}</Table.TextCell>
     </Table.Row>
   ))}
-</Table.Body>
+  </Table.Body>
       </Table>
     </Pane>
   )} else {
@@ -225,7 +248,11 @@ function History() {
   }
 }
 
-function CSVTable (props){
+export interface CSVTableProps{
+  csvData: SpecObject | null,
+  setEventSelection:React.Dispatch<React.SetStateAction<number>>,
+  setEventIsSelected: React.Dispatch<React.SetStateAction<boolean>>}
+function CSVTable (props:CSVTableProps){
   let csvHeader = []
   let csvRows = []
 
@@ -233,7 +260,6 @@ function CSVTable (props){
     return( <Pane> no data </Pane>)
   }else {
     csvHeader = Object.keys(props.csvData[0])
-    csvRows = props.csvData
     return(
       <Pane
       display='block'
@@ -254,7 +280,7 @@ function CSVTable (props){
         </Table.Head>
         <Table.Body>
           {
-            csvRows.map( (row, index) =>
+            props.csvData.map( (row:SpecObject, index:number) =>
                 <StatefulRow
                 isSelectable={true}
                 index={index}
@@ -277,7 +303,14 @@ function CSVTable (props){
   }
 }
 
-function StatefulRow(props) {
+export interface StatefulRowProps{
+  index:number,
+  isSelectable:boolean,
+  setEventSelection:React.Dispatch<React.SetStateAction<number>>,
+  setEventIsSelected:React.Dispatch<React.SetStateAction<boolean>>,
+  children:React.ReactNode
+}
+function StatefulRow(props:StatefulRowProps) {
   const [rowNumber, setRowNumber] = useState(props.index)
 
   return(
@@ -295,8 +328,13 @@ function StatefulRow(props) {
 
 }
 
-function EventPreview(props) {
 
+export interface EventPreviewProps{
+  eventIsSelected:boolean
+  setEventIsSelected:React.Dispatch<React.SetStateAction<boolean>>
+  eventSelection:number
+  csvData:SpecObject}
+function EventPreview(props:EventPreviewProps) {
   if (!props.eventIsSelected) {
     return null
   } else {
@@ -305,9 +343,7 @@ function EventPreview(props) {
       <SideSheet
         isShown={props.eventSelection != null}
         onCloseComplete={() => props.setEventIsSelected(false)}
-        position={Position.LEFT}
-        height='300px'>
-
+        position={Position.LEFT}>
           <CodeMirror
             value={JSON.stringify(eventData, null, 2)}
             extensions={[json()]}/>
@@ -316,8 +352,11 @@ function EventPreview(props) {
   }
 }
 
-function Configuration(props) {
-
+export interface ConfigurationProps{
+  filePath:string,
+  columnNames:Array<string>
+}
+function Configuration(props:ConfigurationProps) {
   const [userIDField, setUserIDField] = useState('')
   const [anonymousIDField, setAnonymousIDField] = useState('')
   const [timestampField, setTimestampField] = useState('')
@@ -328,7 +367,7 @@ function Configuration(props) {
   const [transformationList, setTransformationList] = useState([])
 
   const data:ImportConfig = {
-    filePath:props.csvData,
+    filePath:props.filePath,
     userIdField: userIDField,
     anonymousIdField: anonymousIDField,
     timestampField: timestampField,
@@ -359,7 +398,7 @@ function Configuration(props) {
   }
 
   return(
-    <Pane borderLeft={majorScale(50)}>
+    <Pane>
       <Heading> Configuration </Heading>
       <WriteKeyForm label='Segment Write Key' onChange={setWriteKey}/>
       <Pane marginBottom={majorScale(4)}>
@@ -402,7 +441,7 @@ function Configuration(props) {
       <Transformations
       transformationList={transformationList}
       setTransformationList={setTransformationList}
-      csvData={props.csvData}/>
+      columns={props.columnNames}/>
       <Button
       appearance="primary"
       onClick={() => {importToSegment()}}>
@@ -413,7 +452,11 @@ function Configuration(props) {
   )
 }
 
-function EventTypeSwitch(props) {
+export interface EventTypeSwitch{
+  label:string,
+  onChange:React.Dispatch<React.SetStateAction<boolean>>
+}
+function EventTypeSwitch(props:EventTypeSwitch) {
   const [checked, setChecked] = React.useState(false)
   return (
     <Pane margin={majorScale(2)}>
@@ -431,34 +474,42 @@ function EventTypeSwitch(props) {
   )
 }
 
-function WriteKeyForm(props) {
+export interface WriteKeyFormProps{
+  required?:boolean,
+  label:string,
+  onChange:React.Dispatch<React.SetStateAction<string>>}
+function WriteKeyForm(props:WriteKeyFormProps) {
   const [value, setValue] = React.useState('')
   return (
     <TextInputField
-    required={props.required | true}
+    required={!props.required ? false : true}
     value={value}
     label='Write Key'
-    onChange={e =>{
+    onChange={(e:any) =>{
       setValue(e.target.value)
       props.onChange(e.target.value)
     }}/>
   )
 }
 
-function SettingSelector(props) {
+export interface SettingSelectorProps{
+  options:Array<string>
+  label:string,
+  required:boolean,
+  hint:string,
+  isShown:boolean
+  onChange:React.Dispatch<React.SetStateAction<string>>}
+function SettingSelector(props:SettingSelectorProps){
   if (props.isShown) {
     return (
       <Pane>
         <SelectField
-          options={props.options}
           label={props.label}
           required={props.required}
           hint={props.hint}
-          description={props.description}
           onChange={e => {
             props.onChange(e.target.value)
           }}>
-            <option value={null}/>
             {
               props.options.map(option =>
               <option value={option}>
@@ -473,15 +524,24 @@ function SettingSelector(props) {
   }
 }
 
-function Transformations(props){
-  const columns=Object.keys(props.csvData[0])
+export interface TransformationsProps{
+  columnNames:Array<string>,
+  transformationList:Array<Transformation>|never
+  setTransformationList:React.Dispatch<React.SetStateAction<Transformation[]>>}
+export interface Transformation{
+  type:string,
+  target:string,
+  conditional:string,
+  id:string}
+function Transformations(props:TransformationsProps){
+  const columns=Object.keys(props.columnNames)
 
-  function handleAdd(item){
-    const newList = props.transformationList.concat({...item, id: uuidv4()});
+  function handleAdd(item:Transformation){
+    const newList = props.transformationList.concat(item);
     props.setTransformationList(newList)
   }
 
-  function handleRemoval(id){
+  function handleRemoval(id:string){
     const newList = props.transformationList.filter((transformation) => transformation.id !== id)
     props.setTransformationList(newList)
   }
@@ -496,15 +556,16 @@ function Transformations(props){
           />
         ))}
         <Pane marginY={majorScale(2)}>
-          <AddTransformation columns={columns} handleAdd={handleAdd}/>
+          <AddTransformation transformationList={props.transformationList} columns={columns} handleAdd={handleAdd}/>
         </Pane>
       </Pane>
   )
 }
 
-function TransformationDisplay(props){
+export type TransformationDisplayProps = {transformation:Transformation} & {handleRemoval:(id:string)=>void}
+function TransformationDisplay(props:TransformationDisplayProps){
   return (
-    <StatefulRow key={props.transformation.index}>
+    <StatefulRow key={props.transformation.id}>
       <Pane marginY={majorScale(3)} marginX={majorScale(1)}>
         <Button marginRight={majorScale(1)}>
         {props.transformation.type}
@@ -528,18 +589,77 @@ function TransformationDisplay(props){
   )
 }
 
-function AddTransformation(props){
+export interface AddTransformationProps{
+  columns:Array<string>,
+  handleAdd:(transformation:Transformation)=>void,
+  transformationList:Array<Transformation>,
+}
+function AddTransformation(props:AddTransformationProps){
   const [addTransformation, setAddTransformation] = useState(false)
+  const [transformationType, setTransformationType] = useState('')
+  const [transformationTarget, setTransformationTarget] = useState('')
+  const [transformationConditional, setTransformationConditional] = useState('')
+  const [selected, setSelected] = useState('')
 
   if (addTransformation==true) {
     return(
-      <Pane>
-        <TransformationTypeMenu
-        columns={props.columns}
-        setAddTransformation={setAddTransformation}
-        handleAdd={props.handleAdd}
-        transformationList={props.transformationList}
-        />
+      <Pane
+      marginY={majorScale(2)}
+      display="inline-flex"
+      >
+        <SelectMenu
+          title="Transformation Type"
+          options={['Ignore Column', ''].map((label) => ({ label, value: label }))}
+          selected={transformationType}
+          hasFilter={false}
+          hasTitle={false}
+          onSelect={(item) => {
+            if (typeof item.value === 'string'){
+              setTransformationType(item.value)
+              setSelected(item.value)
+            }
+          }}>
+          <Button>{selected || 'Select Transformation Type'}</Button>
+        </SelectMenu>
+
+        <TransformationTarget
+         columns={props.columns}
+         transformationType={transformationType}
+         setTransformationTarget={setTransformationTarget}
+         />
+        <TransformationConditional
+         transformationType={transformationType}
+         setTransformationConditional={setTransformationConditional}/>
+        <Button
+          marginLeft={majorScale(2)}
+          intent='danger'
+          onClick={()=>{
+            setTransformationType('')
+            setTransformationTarget('')
+            setTransformationConditional('')
+            setAddTransformation(false)
+          }}>
+          delete
+        </Button>
+        <Button
+          marginLeft={majorScale(1)}
+          intent='success'
+          onClick={()=>{
+            if (transformationType && transformationTarget && transformationConditional){
+                props.handleAdd({
+                  type:transformationType,
+                  target:transformationTarget,
+                  conditional:transformationConditional,
+                  id: uuidv4()
+                })
+            }
+            setTransformationType('')
+            setTransformationTarget('')
+            setTransformationConditional('')
+            setAddTransformation(false)
+          }}>
+          save
+        </Button>
       </Pane>
     )
   } else {
@@ -551,68 +671,12 @@ function AddTransformation(props){
   )}
 }
 
-function TransformationTypeMenu (props) {
-  const [transformationType, setTransformationType] = useState(null)
-  const [transformationTarget, setTransformationTarget] = useState(null)
-  const [transformationConditional, setTransformationConditional] = useState(null)
-  const [selected, setSelected] = useState(null)
-
-  return (
-    <Pane
-    marginY={majorScale(2)}
-    display="inline-flex"
-    >
-      <SelectMenu
-        title="Transformation Type"
-        options={['Ignore Column', ''].map((label) => ({ label, value: label }))}
-        selected={transformationType}
-        hasFilter={false}
-        hasTitle={false}
-        onSelect={(item) => {
-          setTransformationType(item.value)
-          setSelected(item.value)
-        }}>
-        <Button>{selected || 'Select Transformation Type'}</Button>
-      </SelectMenu>
-
-      <TransformationTarget
-       columns={props.columns}
-       transformationType={transformationType}
-       setTransformationTarget={setTransformationTarget}
-       />
-      <TransformationConditional
-       transformationType={transformationType}
-       setTransformationConditional={setTransformationConditional}/>
-      <Button
-        marginLeft={majorScale(2)}
-        intent='danger'
-        onClick={()=>{
-          setTransformationType(null)
-          setTransformationTarget(null)
-          setTransformationConditional(null)
-          props.setAddTransformation(false)
-        }}>
-        delete
-      </Button>
-      <Button
-        marginLeft={majorScale(1)}
-        intent='success'
-        onClick={()=>{
-          if (transformationType && transformationTarget && transformationConditional){
-              props.handleAdd({type:transformationType, target:transformationTarget, conditional:transformationConditional})
-          }
-          setTransformationType(null)
-          setTransformationTarget(null)
-          setTransformationConditional(null)
-          props.setAddTransformation(false)
-        }}>
-        save
-      </Button>
-    </Pane>
-  )
-}
-function TransformationTarget(props) {
-  const [selected, setSelected] = React.useState(null)
+export interface TransformationTarget{
+  transformationType:string
+  columns:Array<string>,
+  setTransformationTarget:(value:string)=>void}
+function TransformationTarget(props:TransformationTarget) {
+  const [selected, setSelected] = React.useState('')
 
   if (!props.transformationType){
     return null
@@ -626,25 +690,32 @@ function TransformationTarget(props) {
           hasFilter={false}
           hasTitle={false}
           onSelect={(item) => {
-            setSelected(item.value)
-            props.setTransformationTarget(item.value)
+            if (typeof item.value == 'string'){
+              setSelected(item.value)
+              props.setTransformationTarget(item.value)
+            }
+
           }}>
           <Button>{selected || 'Select Column...'}</Button>
         </SelectMenu>
       </Pane>
     )
-  }
+  } else return null
 }
 
-function TransformationConditional(props) {
-  const [selected, setSelected] = React.useState(null)
+export interface TransformationConditional{
+  transformationType:string
+  columns:Array<string>,
+  setTransformationConditional:(value:string)=>void}
+function TransformationConditional(props:TransformationConditional) {
+  const [selected, setSelected] = React.useState('')
 
   if (!props.transformationType){
     return null
   } else if (props.transformationType == 'Ignore Column') {
     return(
       <Pane
-      marginx={majorScale(2)}
+      marginX={majorScale(2)}
       display="inline-flex">
         <Text marginTop={majorScale(1)} marginRight={majorScale(1)} >
         For
@@ -656,12 +727,15 @@ function TransformationConditional(props) {
           hasFilter={false}
           hasTitle={false}
           onSelect={(item) => {
-            setSelected(item.value)
-            props.setTransformationConditional(item.value)
+            if (typeof item.value == 'string'){
+              setSelected(item.value)
+              props.setTransformationConditional(item.value)
+            }
+
           }}>
           <Button>{selected || 'Select Conditional...'}</Button>
         </SelectMenu>
       </Pane>
     )
-  }
+  } else return null
 }
