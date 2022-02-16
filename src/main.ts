@@ -17,7 +17,7 @@ app.whenReady()
 function windowFactory() {
   // uiWindow contains the react app
   uiWindow = createUIWindow()
-  uiWindow.loadURL('http://localhost:8080');
+  uiWindow.loadURL('templates/uiWindow.html');
   uiWindow.webContents.openDevTools()
 
   // Hidden Render Process that handles the data intensive importing tasks

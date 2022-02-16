@@ -284,8 +284,9 @@ function CSVTable (props:CSVTableProps){
                 <StatefulRow
                 isSelectable={true}
                 index={index}
-                setEventSelection={props.setEventSelection}
-                setEventIsSelected={props.setEventIsSelected}>
+                key={uuidv4()}
+                setRowSelection={props.setEventSelection}
+                setRowIsSelected={props.setEventIsSelected}>
                   {Object.keys(row).map(
                     key =>
                       <Table.TextCell>
@@ -305,22 +306,24 @@ function CSVTable (props:CSVTableProps){
 
 export interface StatefulRowProps{
   index:number,
-  isSelectable:boolean,
-  setEventSelection:React.Dispatch<React.SetStateAction<number>>,
-  setEventIsSelected:React.Dispatch<React.SetStateAction<boolean>>,
+  key:string,
+  isSelectable?:boolean,
+  setRowSelection?:React.Dispatch<React.SetStateAction<number>>,
+  setRowIsSelected?:React.Dispatch<React.SetStateAction<boolean>>,
   children:React.ReactNode
 }
 function StatefulRow(props:StatefulRowProps) {
-  const [rowNumber, setRowNumber] = useState(props.index)
-
+  const [rowNumber, _] = useState(props.index)
   return(
     <Table.Row
-    key={props.index}
-    isSelectable={props.isSelectable}
+    key={props.key}
+    isSelectable={props.isSelectable? props.isSelectable: false}
     flexGrow={1}
     onSelect={() => {
-      props.setEventSelection(rowNumber)
-      props.setEventIsSelected(true)
+      if (props.setRowSelection && props.setRowIsSelected){
+        props.setRowSelection(rowNumber)
+        props.setRowIsSelected(true)
+      }
     }}>
       {props.children}
     </Table.Row>
@@ -364,7 +367,7 @@ function Configuration(props:ConfigurationProps) {
   const [writeKey, setWriteKey] = useState('')
   const [hasTrack, setHasTrack] = useState(false)
   const [hasIdentify, setHasIdentify] = useState(false)
-  const [transformationList, setTransformationList] = useState([])
+  const [transformationList, setTransformationList] = useState<Transformation[] | never>([])
 
   const data:ImportConfig = {
     filePath:props.filePath,
@@ -441,7 +444,7 @@ function Configuration(props:ConfigurationProps) {
       <Transformations
       transformationList={transformationList}
       setTransformationList={setTransformationList}
-      columns={props.columnNames}/>
+      columnNames={props.columnNames}/>
       <Button
       appearance="primary"
       onClick={() => {importToSegment()}}>
@@ -527,7 +530,7 @@ function SettingSelector(props:SettingSelectorProps){
 export interface TransformationsProps{
   columnNames:Array<string>,
   transformationList:Array<Transformation>|never
-  setTransformationList:React.Dispatch<React.SetStateAction<Transformation[]>>}
+  setTransformationList:React.Dispatch<React.SetStateAction<Array<Transformation>|never>>}
 export interface Transformation{
   type:string,
   target:string,
@@ -549,8 +552,9 @@ function Transformations(props:TransformationsProps){
   return(
       <Pane marginY={majorScale(2)}>
         <Heading> Transformations </Heading>
-        {props.transformationList.map((transformation)=>(
+        {props.transformationList.map((transformation, index)=>(
           <TransformationDisplay
+          index={index}
           transformation={transformation}
           handleRemoval={handleRemoval}
           />
@@ -562,10 +566,10 @@ function Transformations(props:TransformationsProps){
   )
 }
 
-export type TransformationDisplayProps = {transformation:Transformation} & {handleRemoval:(id:string)=>void}
+export type TransformationDisplayProps = {index:number} & {transformation:Transformation} & {handleRemoval:(id:string)=>void}
 function TransformationDisplay(props:TransformationDisplayProps){
   return (
-    <StatefulRow key={props.transformation.id}>
+    <StatefulRow key={props.transformation.id} index={props.index}>
       <Pane marginY={majorScale(3)} marginX={majorScale(1)}>
         <Button marginRight={majorScale(1)}>
         {props.transformation.type}
@@ -592,7 +596,7 @@ function TransformationDisplay(props:TransformationDisplayProps){
 export interface AddTransformationProps{
   columns:Array<string>,
   handleAdd:(transformation:Transformation)=>void,
-  transformationList:Array<Transformation>,
+  transformationList:Array<Transformation>|never,
 }
 function AddTransformation(props:AddTransformationProps){
   const [addTransformation, setAddTransformation] = useState(false)
@@ -705,11 +709,9 @@ function TransformationTarget(props:TransformationTarget) {
 
 export interface TransformationConditional{
   transformationType:string
-  columns:Array<string>,
   setTransformationConditional:(value:string)=>void}
 function TransformationConditional(props:TransformationConditional) {
   const [selected, setSelected] = React.useState('')
-
   if (!props.transformationType){
     return null
   } else if (props.transformationType == 'Ignore Column') {
