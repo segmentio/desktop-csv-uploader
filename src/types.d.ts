@@ -1,6 +1,6 @@
 export interface UpdateData {
   config:ImportConfig,
-  csvData:Array<SpecObject>|never
+  csvData:csvData|never
 }
 export interface ImportConfig {
     filePath:string,
@@ -13,8 +13,10 @@ export interface ImportConfig {
       track: boolean,
       identify: boolean
     },
-    transformationList:Array<Transformation>
+    transformationList:Array<Transformation>|never
 }
+
+export type csvData = Array<SpecObject>
 
 export interface SpecObject{
     [index:string]:any

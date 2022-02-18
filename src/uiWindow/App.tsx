@@ -20,7 +20,7 @@ import {
   toaster,
 } from 'evergreen-ui';
 
-import {ImportConfig, UpdateData, SpecObject} from '../types'
+import {ImportConfig, UpdateData, SpecObject, csvData} from '../types'
 
 declare global{
   interface Window{
@@ -35,15 +35,13 @@ declare global{
 
 
 function App() {
-  const [csvData, setCSVData] = useState<UpdateData["csvData"] | null>(null)
+  const [csvData, setCSVData] = useState<csvData | null>(null)
   const [eventSelection, setEventSelection] = useState<number>(0)
   const [eventIsSelected, setEventIsSelected] = useState<boolean>(false)
   const [menuSelection, setMenuSelection] = useState<'Importer'|'History'>('Importer')
 
   useEffect( () => {
-    window.api.on("csv-loaded", (data:UpdateData["csvData"]) => {
-      console.log('csv-loaded');
-      console.log(data)
+    window.api.on("csv-loaded", (data:csvData) => {
       setCSVData(data)
     });
     return () => window.api.removeAllListeners("csv-loaded");
@@ -112,21 +110,22 @@ function ViewWrapper(props:CSVWorkspaceProps){
   } else{ return null}
 }
 export interface CSVWorkspaceProps{
-  csvData:SpecObject | null,
+  csvData:csvData | null,
   eventSelection:number,
   setEventSelection: React.Dispatch<React.SetStateAction<number>>,
   eventIsSelected:boolean,
   setEventIsSelected: React.Dispatch<React.SetStateAction<boolean>>,
   menuSelection?: 'Importer'|'History'}
 function CSVWorkspace(props:CSVWorkspaceProps){
-  const [previewedEvents, setPreviewedEvents] = useState<UpdateData|null>(null)
+  const [previewedEvents, setPreviewedEvents] = useState<csvData|null>(null)
   const [importComplete, setImportComplete] = useState(false)
   const [filePath, setFilePath] = useState<string>('')
 
   useEffect(()=>{
-    window.api.on('event-preview-updated', (data:UpdateData) => {
+    window.api.on('event-preview-updated', (data:csvData) => {
       setPreviewedEvents(data)
       console.log('event-preview-updated')
+      console.log(data)
     });
 
     window.api.on('import-complete', (count:number)=> {
@@ -169,6 +168,7 @@ function CSVWorkspace(props:CSVWorkspaceProps){
         <Pane
         marginX={majorScale(4)}>
           <Configuration
+          csvData={props.csvData}
           columnNames={Object.keys(props.csvData[0])}
           filePath={filePath}
           />
@@ -253,7 +253,7 @@ function History() {
 }
 
 export interface CSVTableProps{
-  csvData: SpecObject | null,
+  csvData: csvData | null,
   setEventSelection:React.Dispatch<React.SetStateAction<number>>,
   setEventIsSelected: React.Dispatch<React.SetStateAction<boolean>>}
 function CSVTable (props:CSVTableProps){
@@ -340,7 +340,7 @@ export interface EventPreviewProps{
   eventIsSelected:boolean
   setEventIsSelected:React.Dispatch<React.SetStateAction<boolean>>
   eventSelection:number
-  csvData:SpecObject}
+  csvData:csvData}
 function EventPreview(props:EventPreviewProps) {
   if (!props.eventIsSelected) {
     return null
@@ -361,7 +361,8 @@ function EventPreview(props:EventPreviewProps) {
 
 export interface ConfigurationProps{
   filePath:string,
-  columnNames:Array<string>
+  columnNames:Array<string>,
+  csvData:csvData
 }
 function Configuration(props:ConfigurationProps) {
   const [userIDField, setUserIDField] = useState('')
@@ -371,25 +372,29 @@ function Configuration(props:ConfigurationProps) {
   const [writeKey, setWriteKey] = useState('')
   const [hasTrack, setHasTrack] = useState(false)
   const [hasIdentify, setHasIdentify] = useState(false)
-  const [transformationList, setTransformationList] = useState<Transformation[] | never>([])
+  const [transformationList, setTransformationList] = useState<Transformation[]|never>([])
 
-  const data:ImportConfig = {
-    filePath:props.filePath,
-    userIdField: userIDField,
-    anonymousIdField: anonymousIDField,
-    timestampField: timestampField,
-    eventField: eventNameField,
-    writeKey: writeKey,
-    eventTypes: {
-      track: hasTrack,
-      identify:hasIdentify
-    },
+  const updateData:UpdateData = {
+    // the update date that is sent to the importer, is always the
+    config:{
+      filePath:props.filePath,
+      userIdField: userIDField,
+      anonymousIdField: anonymousIDField,
+      timestampField: timestampField,
+      eventField: eventNameField,
+      writeKey: writeKey,
+      eventTypes: {
+        track: hasTrack,
+        identify:hasIdentify
+      },
     transformationList:transformationList
+  },
+    csvData:props.csvData
   };
 
   useEffect( ()=>{
-    window.api.send('update-event-preview', data)
-    console.log('ui-update-event-preview')
+    window.api.send('update-event-preview', updateData)
+    console.log('ui-update-event-preview', updateData)
   }, [
     userIDField,
     anonymousIDField,
@@ -397,10 +402,11 @@ function Configuration(props:ConfigurationProps) {
     eventNameField,
     hasTrack,
     hasIdentify,
+    transformationList
   ])
 
   const importToSegment = () => {
-    window.api.send('import-to-segment', data)
+    window.api.send('import-to-segment', updateData)
     console.log('import-to-segment')
   }
 
@@ -454,7 +460,7 @@ function Configuration(props:ConfigurationProps) {
       onClick={() => {importToSegment()}}>
         Import
       </Button>
-      {console.log(data)}
+      {console.log(updateData)}
     </Pane>
   )
 }

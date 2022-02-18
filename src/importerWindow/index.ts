@@ -5,7 +5,7 @@ import CsvParser from 'csv-parser';
 import Analytics from 'analytics-node';
 //@ts-ignore
 import {insertImportRecord, getAllImports} from '../utils/dbQueries';
-import {ImportConfig, UpdateData, SpecObject} from '../types';
+import {ImportConfig, UpdateData, SpecObject, csvData} from '../types';
 // manual test write key HPzXrG6JTe3kf4a8McAo1eM8TGQnkm3e
 
 type TimeStampable = string|number|Date
@@ -45,15 +45,6 @@ interface Events {
     identify?:IdentifyEvent
 }
 
-// IPC listeners
-ipcRenderer.on('load-csv', (_, filePath) => {
-  let results:UpdateData["csvData"] = []
-  console.log('importer-loading-csv' + filePath )
-  const stream = CSVStream(filePath, {linesNeeded:10})
-  stream.on('data', (data:SpecObject)=>{ results.push(data) })
-  stream.on('close', ()=>ipcRenderer.send('csv-loaded', results))
-})
-
 function CSVStream(filePath:string, options?:{linesNeeded:number}):Writable{
   const csvStream = fs.createReadStream(filePath).pipe(CsvParser({separator:'|'})) // pipe converts read streams into writable streams
   let lineCounter = 0
@@ -65,6 +56,15 @@ function CSVStream(filePath:string, options?:{linesNeeded:number}):Writable{
   })
   return csvStream
 }
+
+// IPC listeners
+ipcRenderer.on('load-csv', (_, filePath) => {
+  let results:csvData = []
+  console.log('importer-loading-csv' + filePath )
+  const stream = CSVStream(filePath, {linesNeeded:10})
+  stream.on('data', (data:SpecObject)=>{ results.push(data) })
+  stream.on('close', ()=>ipcRenderer.send('csv-loaded', results))
+})
 
 ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
   try {
@@ -78,7 +78,6 @@ ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
 
     stream.on('data', (row)=>{
       const events:Events = formatSegmentCalls(row, config, transformations)
-
       try {
         if (events.track){
           analytics.track(events.track)
@@ -99,8 +98,8 @@ ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
       const values = {config:JSON.stringify(config)};
       insertImportRecord(values);
       console.log('importer-importing-to-segment');
-
     })
+
   } catch {
     (error:Error)=>{
     console.log(error)
@@ -109,15 +108,21 @@ ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
 })
 
 ipcRenderer.on('update-event-preview', (_, updateData:UpdateData) => {
-  const transformations = sortTransformations(updateData.config.transformationList)
-  let previewEvents = []
-  for (let i=0; i<updateData.csvData.length; i++) {
-    if (updateData.config.eventTypes['track']) {
-      const events = formatSegmentCalls(updateData.csvData[i], updateData.config, transformations)
-      previewEvents.push(events)
+  console.log(updateData)
+  const rawTransformations:Transformation[] = updateData.config.transformationList
+  const transformations:SortedTransformations = sortTransformations(rawTransformations)
+  let previewEvents:csvData = []
+  const eventTypes = updateData.config.eventTypes
+  if (eventTypes.track || eventTypes.identify){
+    for (let i=0; i<updateData.csvData.length; i++) {
+        const events:Events = formatSegmentCalls(updateData.csvData[i], updateData.config, transformations)
+        previewEvents.push(events)
+      }
+    } else {
+      previewEvents = updateData.csvData
     }
-  }
   ipcRenderer.send('event-preview-updated', previewEvents)
+  console.log(previewEvents)
 })
 
 ipcRenderer.on('load-history', ()=>{
