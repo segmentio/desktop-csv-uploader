@@ -4,8 +4,8 @@ import Writable from 'stream'
 import CsvParser from 'csv-parser';
 import Analytics from 'analytics-node';
 //@ts-ignore
-import {insertImportRecord, getAllImports} from '../dist/utils/dbQueries';
-import {ImportConfig, UpdateData, SpecObject} from './types';
+import {insertImportRecord, getAllImports} from '../utils/dbQueries';
+import {ImportConfig, UpdateData, SpecObject} from '../types';
 // manual test write key HPzXrG6JTe3kf4a8McAo1eM8TGQnkm3e
 
 type TimeStampable = string|number|Date
@@ -48,6 +48,7 @@ interface Events {
 // IPC listeners
 ipcRenderer.on('load-csv', (_, filePath) => {
   let csvResults:Array<SpecObject> = []
+  console.log('importer-loading-csv' + filePath )
   const stream = CSVStream(filePath, {linesNeeded:10})
   stream.on('data', (data:SpecObject)=>{ csvResults.push(data)})
   stream.on('close', ()=>ipcRenderer.send('csv-loaded', csvResults))

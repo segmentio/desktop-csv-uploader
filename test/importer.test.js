@@ -2,7 +2,7 @@ const assert = require('assert');
 const {ipcMain} = require('electron');
 const sqlite3 = require('better-sqlite3')
 const fs = require('fs')
-const {insertImportRecord, getAllImports} = require('../public/utils/dbQueries')
+const {insertImportRecord, getAllImports} = require('../dist/utils/dbQueries')
 
 const data = {
   'csvData': [

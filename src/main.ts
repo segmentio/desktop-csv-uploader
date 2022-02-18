@@ -1,8 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
-import path = require('path');
-
-console.log(__dirname)
-
+import path from "path"
 let uiWindow:BrowserWindow
 let importerWindow:BrowserWindow
 
@@ -17,12 +14,12 @@ app.whenReady()
 function windowFactory() {
   // uiWindow contains the react app
   uiWindow = createUIWindow()
-  uiWindow.loadURL('templates/uiWindow.html');
+  uiWindow.loadFile('uiWindow.html');
   uiWindow.webContents.openDevTools()
 
   // Hidden Render Process that handles the data intensive importing tasks
   importerWindow = createImporterWindow()
-  importerWindow.loadFile('templates/importerWindow.html')
+  importerWindow.loadFile('importerWindow.html')
   importerWindow.webContents.openDevTools()
 }
 
@@ -34,7 +31,7 @@ function createUIWindow() {
       webPreferences: {
         nodeIntegration: false, // default, but explicit for securty
         contextIsolation: true, // protect against prototype pollution
-        preload: path.join(__dirname, 'preload.js') // preload script to expose ipcRenderer in Browser window, necessary since nodeintegration == false
+        preload: path.join(__dirname, './utils/preload.js') // preload script to expose ipcRenderer in Browser window, necessary since nodeintegration == false
       }
     })
   )
@@ -56,51 +53,51 @@ function registerIPC() {
   // uiWindow --> main process --> importerWindow
     // A filepath is passed to the importer window which parses and loads the
     // the csv file into memory
-  ipcMain.on('load-csv', (_, filePath) => {
+  ipcMain.on('load-csv', (_, filePath:string) => {
     importerWindow.webContents.send('load-csv', filePath)
     console.log('main-load-csv')
   })
 
   // importerWindow --> main process --> uiWindow
     // The head of the csv file is passed to the UI
-  ipcMain.on('csv-loaded', (_, data) => {
+  ipcMain.on('csv-loaded', (_, data:any) => {
     uiWindow.webContents.send('csv-loaded', data)
     console.log('main-csv-loaded')
   })
 
   // uiwindow --> main process --> importerWindow
     // settings and csv data are passed to the importer
-  ipcMain.on('import-to-segment', (_, data) => {
+  ipcMain.on('import-to-segment', (_, data:any) => {
     importerWindow.webContents.send('import-to-segment', data)
     console.log('main-import-to-segment')
   })
 
-  ipcMain.on('update-event-preview', (_, data) => {
+  ipcMain.on('update-event-preview', (_, data:any) => {
     importerWindow.webContents.send('update-event-preview', data)
     console.log('main-update-event-preview')
   })
 
-  ipcMain.on('event-preview-updated', (_, previewEvents) => {
+  ipcMain.on('event-preview-updated', (_, previewEvents:any) => {
     uiWindow.webContents.send('event-preview-updated', previewEvents)
     console.log('main-event-preview-updated')
   })
 
-  ipcMain.on('import-complete', (_, count)=>{
+  ipcMain.on('import-complete', (_, count:number)=>{
     uiWindow.webContents.send('import-complete', count)
     console.log('main-import-complete')
   })
 
-  ipcMain.on('import-error', (_, error)=>{
+  ipcMain.on('import-error', (_, error:string)=>{
     uiWindow.webContents.send('import-error', error)
     console.log('main-import-error')
   })
 
-  ipcMain.on('load-history', (_, data)=>{
+  ipcMain.on('load-history', (_, data:any)=>{
     importerWindow.webContents.send('load-history', data)
     console.log('main-load-history')
   })
 
-  ipcMain.on('history-loaded', (_, data)=>{
+  ipcMain.on('history-loaded', (_, data:any)=>{
     uiWindow.webContents.send('history-loaded', data)
     console.log('main-history-loaded')
   }
