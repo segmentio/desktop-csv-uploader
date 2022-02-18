@@ -41,7 +41,11 @@ function App() {
   const [menuSelection, setMenuSelection] = useState<'Importer'|'History'>('Importer')
 
   useEffect( () => {
-    window.api.on("csv-loaded", (data:UpdateData) => {setCSVData(data.csvData)})
+    window.api.on("csv-loaded", (data:UpdateData["csvData"]) => {
+      console.log('csv-loaded');
+      console.log(data)
+      setCSVData(data)
+    });
     return () => window.api.removeAllListeners("csv-loaded");
   }
 )

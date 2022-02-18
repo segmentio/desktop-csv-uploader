@@ -1,6 +1,6 @@
 export interface UpdateData {
   config:ImportConfig,
-  csvData:Array<SpecObject>
+  csvData:Array<SpecObject>|never
 }
 export interface ImportConfig {
     filePath:string,

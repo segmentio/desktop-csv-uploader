@@ -47,11 +47,11 @@ interface Events {
 
 // IPC listeners
 ipcRenderer.on('load-csv', (_, filePath) => {
-  let csvResults:Array<SpecObject> = []
+  let results:UpdateData["csvData"] = []
   console.log('importer-loading-csv' + filePath )
   const stream = CSVStream(filePath, {linesNeeded:10})
-  stream.on('data', (data:SpecObject)=>{ csvResults.push(data)})
-  stream.on('close', ()=>ipcRenderer.send('csv-loaded', csvResults))
+  stream.on('data', (data:SpecObject)=>{ results.push(data) })
+  stream.on('close', ()=>ipcRenderer.send('csv-loaded', results))
 })
 
 function CSVStream(filePath:string, options?:{linesNeeded:number}):Writable{
