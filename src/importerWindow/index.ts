@@ -45,6 +45,12 @@ interface Events {
     identify?:IdentifyEvent
 }
 
+window.onerror = function(error:any, url, line) {
+  console.log(error)
+  console.log(error)
+  ipcRenderer.send('import-error', error)
+}
+
 function CSVStream(filePath:string, options?:{linesNeeded:number}):Writable{
   const csvStream = fs.createReadStream(filePath).pipe(CsvParser({separator:'|'})) // pipe converts read streams into writable streams
   let lineCounter = 0
@@ -67,17 +73,21 @@ ipcRenderer.on('load-csv', (_, filePath) => {
 })
 
 ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
-  try {
+  console.log('import-to-segment')
     const analytics = new Analytics(config.writeKey)
-    const stream = CSVStream(config.filePath)
     const transformations = sortTransformations(config.transformationList)
 
     if (!config.eventTypes.track && !config.eventTypes.identify){
-      throw new Error("No event types selected")
+      throw new Error('No event types selected')
+      console.log('No event types selected')
     }
 
-    stream.on('data', (row)=>{
+    const stream = CSVStream(config.filePath)
+    console.log('stream')
+
+    stream.on('data', (row) => {
       const events:Events = formatSegmentCalls(row, config, transformations)
+      console.log(events)
       try {
         if (events.track){
           analytics.track(events.track)
@@ -87,24 +97,27 @@ ipcRenderer.on('import-to-segment', (_, config:ImportConfig) => {
         }
       } catch {
         (error:Error)=> {
+          console.log(error)
           error.message = error.message + ' This error occurred on line: '
           throw error
+          ipcRenderer.send('import-error', error.message)
       }
+    }
+  })
+
+  stream.on('error', ()=>{
+    (error:Error)=>{
+      throw error
     }
   })
 
     stream.on('close', ()=>{
       ipcRenderer.send('import-complete', config);
-      const values = {config:JSON.stringify(config)};
-      insertImportRecord(values);
-      console.log('importer-importing-to-segment');
+      // const values = {config:JSON.stringify(config)};
+      // insertImportRecord(values);
+      console.log('importer-stream complete');
     })
 
-  } catch {
-    (error:Error)=>{
-    console.log(error)
-    ipcRenderer.send('import-error', error.message)
-  }}
 })
 
 ipcRenderer.on('update-event-preview', (_, updateData:UpdateData) => {
@@ -265,5 +278,6 @@ function sortTransformations(transformations:Array<Transformation>):SortedTransf
         }
     }
   }
+  console.log('transformation-sorted')
   return sorted
 }

@@ -406,7 +406,7 @@ function Configuration(props:ConfigurationProps) {
   ])
 
   const importToSegment = () => {
-    window.api.send('import-to-segment', updateData)
+    window.api.send('import-to-segment', updateData.config)
     console.log('import-to-segment')
   }
 
@@ -547,7 +547,6 @@ export interface Transformation{
   conditional:string,
   id:string}
 function Transformations(props:TransformationsProps){
-  const columns=Object.keys(props.columnNames)
 
   function handleAdd(item:Transformation){
     const newList = props.transformationList.concat(item);
@@ -570,7 +569,7 @@ function Transformations(props:TransformationsProps){
           />
         ))}
         <Pane marginY={majorScale(2)}>
-          <AddTransformation transformationList={props.transformationList} columns={columns} handleAdd={handleAdd}/>
+          <AddTransformation transformationList={props.transformationList} columns={props.columnNames} handleAdd={handleAdd}/>
         </Pane>
       </Pane>
   )
