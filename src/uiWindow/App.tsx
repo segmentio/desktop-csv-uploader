@@ -523,6 +523,7 @@ function SettingSelector(props:SettingSelectorProps){
           onChange={e => {
             props.onChange(e.target.value)
           }}>
+          <option value="" selected></option>
             {
               props.options.map(option =>
               <option value={option}>
