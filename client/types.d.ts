@@ -3,7 +3,6 @@ export interface UpdateData {
   csvData:csvData|never
 }
 export interface ImportConfig {
-    filePath:string,
     userIdField: string,
     anonymousIdField: string,
     timestampField: string,
@@ -16,7 +15,7 @@ export interface ImportConfig {
     transformationList:Array<Transformation>|never
 }
 
-export type csvData = Array<SpecObject>
+export type CSVData = Array<SpecObject>
 
 export interface SpecObject{
     [index:string]:any

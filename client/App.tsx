@@ -1,52 +1,31 @@
 import React, {useEffect, useState} from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import {json} from '@codemirror/lang-json';
-import {v4 as uuidv4} from 'uuid'
-import {
-  Pane,
-  Menu,
-  Table,
-  Text,
-  SelectMenu,
-  Button,
-  Heading,
-  SelectField,
-  SideSheet,
-  Position,
-  TextInputField,
-  Switch,
-  FilePicker,
-  majorScale,
-  toaster,
+import {v4 as uuidv4} from 'uuid';
+import Papa from 'papaparse';
+import { Pane, Menu, Table, Text, SelectMenu, Button, Heading, SelectField,
+  SideSheet, Position, TextInputField, Switch, FilePicker, majorScale, toaster,
 } from 'evergreen-ui';
 
-import {ImportConfig, UpdateData, SpecObject, csvData} from '../types'
+import {ImportConfig, UpdateData, SpecObject, CSVData} from './types'
+import {formatEventsFromRow, sortTransformations} from './utils/format'
+import {importToSegment} from './utils/importer'
 
-declare global{
-  interface Window{
-    api: {
-      send: (channel: string, ...arg: any) => void;
-      on: (channel: string, func: (event: any, ...arg: any) => void) => void;
-      removeAllListeners: (channel:string, func?: (event:any, ...arg:any)=> void) => void;
-    }
-  }
+
+window.onerror = function(error:any) {
+  toaster.danger('Oops Something went wrong... ', {description:error})
 }
 
-
+window.addEventListener('import-complete', ()=> {
+  toaster.success('Import Successful!', {description:'Check the source debugger in your Segment workspace!'})
+});
 
 function App() {
-  const [csvData, setCSVData] = useState<csvData | null>(null)
+  const [csvData, setCSVData] = useState<CSVData | null>(null)
   const [eventSelection, setEventSelection] = useState<number>(0)
   const [eventIsSelected, setEventIsSelected] = useState<boolean>(false)
   const [menuSelection, setMenuSelection] = useState<'Importer'|'History'>('Importer')
 
-  useEffect( () => {
-    window.api.on("csv-loaded", (data:csvData) => {
-      setCSVData(data)
-    });
-    return () => window.api.removeAllListeners("csv-loaded");
-  }
-)
   return (
     <div className="App">
         <Pane
@@ -55,6 +34,7 @@ function App() {
           <CustomMenu setMenuSelection={setMenuSelection}/>
           <ViewWrapper
           csvData={csvData}
+          setCSVData={setCSVData}
           eventSelection={eventSelection}
           setEventSelection={setEventSelection}
           eventIsSelected={eventIsSelected}
@@ -97,6 +77,7 @@ function ViewWrapper(props:CSVWorkspaceProps){
     return(
       <CSVWorkspace
       csvData={props.csvData}
+      setCSVData={props.setCSVData}
       eventSelection={props.eventSelection}
       setEventSelection={props.setEventSelection}
       eventIsSelected={props.eventIsSelected}
@@ -109,44 +90,21 @@ function ViewWrapper(props:CSVWorkspaceProps){
     )
   } else{ return null}
 }
+
 export interface CSVWorkspaceProps{
-  csvData:csvData | null,
+  csvData:CSVData | null,
+  setCSVData: React.Dispatch<React.SetStateAction<CSVData|null>>,
   eventSelection:number,
   setEventSelection: React.Dispatch<React.SetStateAction<number>>,
   eventIsSelected:boolean,
   setEventIsSelected: React.Dispatch<React.SetStateAction<boolean>>,
   menuSelection?: 'Importer'|'History'}
 function CSVWorkspace(props:CSVWorkspaceProps){
-  const [previewedEvents, setPreviewedEvents] = useState<csvData|null>(null)
+  const [previewedEvents, setPreviewedEvents] = useState<CSVData|null>(null)
   const [importComplete, setImportComplete] = useState(false)
-  const [filePath, setFilePath] = useState<string>('')
+  const [file, setFile] = useState<File|null>(null)
 
-  useEffect(()=>{
-    window.api.on('event-preview-updated', (data:csvData) => {
-      setPreviewedEvents(data)
-      console.log('event-preview-updated')
-      console.log(data)
-    });
-
-    window.api.on('import-complete', (count:number)=> {
-      toaster.success('Import Successful!', {description:'Check the source debugger in your Segment workspace!'})
-      console.log('import-complete')
-    });
-
-    window.api.on('import-error', (error:string)=> {
-      console.log(error)
-      toaster.danger('Oops Something went wrong... ', {description:error})
-      console.log('import-error')
-    });
-
-    return () => {
-      window.api.removeAllListeners('event-preview-updated')
-      window.api.removeAllListeners('import-complete')
-      window.api.removeAllListeners('import-error')
-    }
-  })
-
-  if (props.csvData){
+  if (props.csvData && file){
     return(
       <Pane
       display="grid"
@@ -168,9 +126,10 @@ function CSVWorkspace(props:CSVWorkspaceProps){
         <Pane
         marginX={majorScale(4)}>
           <Configuration
+          file={file}
           csvData={props.csvData}
           columnNames={Object.keys(props.csvData[0])}
-          filePath={filePath}
+          setPreviewedEvents={setPreviewedEvents}
           />
         </Pane>
       </Pane>
@@ -188,10 +147,9 @@ function CSVWorkspace(props:CSVWorkspaceProps){
         Import a CSV file, or work from your Import History
         </Text>
         <FilePicker
-        onChange={filePath => {
-          console.log("load-csv", filePath)
-          window.api.send("load-csv", filePath[0].path)
-          setFilePath(filePath[0].path)
+        onChange={fileList => {
+          readHead(fileList[0], props.setCSVData)
+          setFile(fileList[0])
           }}
         />
       </Pane>
@@ -199,22 +157,30 @@ function CSVWorkspace(props:CSVWorkspaceProps){
   }
 }
 
+function readHead(localFile:File, callback:Function):any{
+  let lineCounter = 0
+  let csvRows:CSVData = []
+  Papa.parse(localFile, {
+    header:true,
+    skipEmptyLines:true,
+    step: function(row, parser){
+        lineCounter++
+        //@ts-ignore
+        csvRows.push(row.data)
+        if (lineCounter>=10){
+          parser.abort()
+        }
+    },
+    complete: function() {
+      callback(csvRows)
+    }
+  })
+
+}
+
 
 function History() {
   const [history, setHistory] = useState<Array<object>|null>(null)
-
-  useEffect( ()=>{
-    window.api.send('load-history', null);
-    window.api.on('history-loaded', (data)=>{
-      console.log('history-loaded')
-      setHistory(data)
-    });
-
-    return ()=>{
-      window.api.removeAllListeners('load-history');
-      window.api.removeAllListeners('history-loaded');
-    }
-  }, [])
 
   if (history){
     return (
@@ -253,7 +219,7 @@ function History() {
 }
 
 export interface CSVTableProps{
-  csvData: csvData | null,
+  csvData: CSVData | null,
   setEventSelection:React.Dispatch<React.SetStateAction<number>>,
   setEventIsSelected: React.Dispatch<React.SetStateAction<boolean>>}
 function CSVTable (props:CSVTableProps){
@@ -340,7 +306,7 @@ export interface EventPreviewProps{
   eventIsSelected:boolean
   setEventIsSelected:React.Dispatch<React.SetStateAction<boolean>>
   eventSelection:number
-  csvData:csvData}
+  csvData:CSVData}
 function EventPreview(props:EventPreviewProps) {
   if (!props.eventIsSelected) {
     return null
@@ -360,9 +326,10 @@ function EventPreview(props:EventPreviewProps) {
 }
 
 export interface ConfigurationProps{
-  filePath:string,
   columnNames:Array<string>,
-  csvData:csvData
+  csvData:CSVData,
+  setPreviewedEvents:React.Dispatch<React.SetStateAction<CSVData|null>>
+  file:File
 }
 function Configuration(props:ConfigurationProps) {
   const [userIDField, setUserIDField] = useState('')
@@ -374,10 +341,7 @@ function Configuration(props:ConfigurationProps) {
   const [hasIdentify, setHasIdentify] = useState(false)
   const [transformationList, setTransformationList] = useState<Transformation[]|never>([])
 
-  const updateData:UpdateData = {
-    // the update date that is sent to the importer, is always the
-    config:{
-      filePath:props.filePath,
+  const config:ImportConfig = {
       userIdField: userIDField,
       anonymousIdField: anonymousIDField,
       timestampField: timestampField,
@@ -387,28 +351,27 @@ function Configuration(props:ConfigurationProps) {
         track: hasTrack,
         identify:hasIdentify
       },
-    transformationList:transformationList
-  },
-    csvData:props.csvData
-  };
+      transformationList:transformationList
+    };
 
-  useEffect( ()=>{
-    window.api.send('update-event-preview', updateData)
-    console.log('ui-update-event-preview', updateData)
-  }, [
-    userIDField,
-    anonymousIDField,
-    timestampField,
-    eventNameField,
-    hasTrack,
-    hasIdentify,
-    transformationList
-  ])
-
-  const importToSegment = () => {
-    window.api.send('import-to-segment', updateData.config)
-    console.log('import-to-segment')
-  }
+  useEffect(
+    function updateEventPreivew(){
+      let previewedEvents:CSVData = []
+      const sortedTransformations = sortTransformations(transformationList)
+      props.csvData.map( (row)=> {
+        previewedEvents.push(formatEventsFromRow(row, config, sortedTransformations))
+      })
+      props.setPreviewedEvents(previewedEvents)
+    }, [
+      userIDField,
+      anonymousIDField,
+      timestampField,
+      eventNameField,
+      hasTrack,
+      hasIdentify,
+      transformationList
+    ]
+  )
 
   return(
     <Pane>
@@ -457,10 +420,11 @@ function Configuration(props:ConfigurationProps) {
       columnNames={props.columnNames}/>
       <Button
       appearance="primary"
-      onClick={() => {importToSegment()}}>
+      onClick={() =>{
+        importToSegment(config, props.file)}
+      }>
         Import
       </Button>
-      {console.log(updateData)}
     </Pane>
   )
 }
