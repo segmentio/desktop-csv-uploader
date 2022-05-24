@@ -1,0 +1,72 @@
+{
+  "name": "csvelectron",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./build/server/index",
+  "dependencies": {
+    "@codemirror/lang-javascript": "^0.19.4",
+    "@codemirror/lang-json": "^0.19.1",
+    "@types/analytics-node": "^3.1.7",
+    "@types/better-sqlite3": "^7.4.2",
+    "@types/express": "^4.17.13",
+    "@types/node": "^17.0.16",
+    "@types/papaparse": "^5.3.2",
+    "@types/react-dom": "^17.0.11",
+    "@types/uuid": "^8.3.4",
+    "@uiw/react-codemirror": "^4.3.2",
+    "analytics-node": "^6.0.0",
+    "autoprefixer": "10.0.2",
+    "better-sqlite3": "^7.5.0",
+    "copy-webpack-plugin": "^10.2.4",
+    "evergreen-ui": "^6.6.3",
+    "express": "^4.17.3",
+    "html-webpack-plugin": "^5.5.0",
+    "node-polyfill-webpack-plugin": "^1.1.4",
+    "papaparse": "^5.3.1",
+    "react": "^17.0.2",
+    "react-csv-to-table": "^0.0.4",
+    "react-dom": "^17.0.2",
+    "react-is": "^17.0.2",
+    "react-scripts": "^5.0.0",
+    "ts-loader": "^9.2.6",
+    "uuid": "^8.3.2",
+    "web-vitals": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/expect": "^24.3.0",
+    "@types/mocha": "^9.1.0",
+    "mocha": "^9.1.3",
+    "react-scripts": "^5.0.0",
+    "ts-loader": "^9.2.6",
+    "ts-mocha": "^9.0.2",
+    "typescript": "^4.5.5",
+    "webpack": "^5.67.0",
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.3"
+  },
+  "scripts": {
+    "server": "tsc --project tsconfig.server.json && node ./build/server",
+    "client": "webpack-dev-server",
+    "build": "webpack && tsc --project tsconfig.server.json",
+    "test": "ts-mocha -p tsconfig.json 'client/**/*.test.ts' --inspect",
+    "start": "node ./build/server"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
