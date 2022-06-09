@@ -13,7 +13,7 @@ This is a new and improved historical data importer for Segment. It provides a d
 ### Development
 
 1.   `npm install`
-2.   `npm build` to package via webpack and transpile typescript
+2.   `npm run build` to package via webpack and transpile typescript
 3.   `npm run client` to start the dev server
 
 ### Testing
