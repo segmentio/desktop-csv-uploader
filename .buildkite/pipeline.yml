@@ -1,0 +1,13 @@
+env:
+  SEGMENT_CONTEXTS: 'snyk'
+  SEGMENT_BUILDKITE_IMAGE: 'buildkite-agent-node12'
+  # Forcibly enables color output for everything using the `chalk` package because buildkite isn't included in the whitelist:
+  # https://github.com/chalk/supports-color/blob/651576a5fabfa489660b48f50a7f2e5ed7676997/index.js#L83-L89
+  FORCE_COLOR: '1'
+
+
+steps:
+  - label: ':lock: Snyk'
+  agents:
+    queue: v1
+  command: 'bk-snyk'
