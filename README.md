@@ -1,6 +1,6 @@
 # Segment Desktop CSV Uploader
 
-This is a new and improved historical data importer for Segment. It provides a desktop UI to dynamically configure, transform, and preview CSV data as Segment events. It's build with express and React.
+This is a new and improved historical data importer for Segment. It provides a desktop UI to dynamically configure, transform, and import CSV data as Segment events. It's build with express and React.
 
 
 <img width="800" alt="Screen Shot 2022-01-24 at 10 03 57 PM" src="https://user-images.githubusercontent.com/11877780/150903437-7225d19d-0fce-403a-8dfd-88ef20229909.png">
