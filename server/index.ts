@@ -1,3 +1,5 @@
+// Copyright 2022 Twilio Inc.
+
 import * as express from 'express';
 import {Request, Response} from 'express';
 import * as path from 'path';
