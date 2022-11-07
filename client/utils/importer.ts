@@ -20,7 +20,7 @@ export const importToSegment = (
     throw new Error('No event types selected')
   }
 
-  const analytics = new Analytics(config.writeKey)
+  const analytics = new Analytics(config.writeKey, { flushAt: 100})
   const sortedTransformations = sortTransformations(config.transformationList)
   let counter = 0
   console.time()
@@ -30,7 +30,6 @@ export const importToSegment = (
     header:true,
     skipEmptyLines:true,
     step: function(row){
-      console.log(counter)
       counter++
       //@ts-ignore
       const events = formatEventsFromRow(row.data, config, sortedTransformations)
