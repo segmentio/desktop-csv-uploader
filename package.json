@@ -14,7 +14,7 @@
     "@types/uuid": "^8.3.4",
     "@uiw/react-codemirror": "^4.3.2",
     "analytics-node": "^6.0.0",
-    "autoprefixer": "10.0.2",
+    "autoprefixer": "10.4.14",
     "copy-webpack-plugin": "^10.2.4",
     "evergreen-ui": "^6.6.3",
     "express": "^4.17.3",
