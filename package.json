@@ -16,7 +16,7 @@
     "analytics-node": "^6.0.0",
     "autoprefixer": "10.0.2",
     "copy-webpack-plugin": "^10.2.4",
-    "evergreen-ui": "^6.6.3",
+    "evergreen-ui": "^7.0.0",
     "express": "^4.17.3",
     "html-webpack-plugin": "^5.5.0",
     "node-polyfill-webpack-plugin": "^1.1.4",
