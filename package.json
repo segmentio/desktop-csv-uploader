@@ -17,7 +17,7 @@
     "autoprefixer": "10.0.2",
     "copy-webpack-plugin": "^10.2.4",
     "evergreen-ui": "^6.6.3",
-    "express": "^4.17.3",
+    "express": "^4.19.2",
     "html-webpack-plugin": "^5.5.0",
     "node-polyfill-webpack-plugin": "^1.1.4",
     "papaparse": "^5.3.1",
